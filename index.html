@@ -416,7 +416,7 @@ function startGame() {
 function initGame() {
     snake = [{x:10,y:10}, {x:10,y:11}, {x:10,y:12}];
     dx = 0; dy = -1;
-    score = 0; timeLeft = 60; obstacles = []; speed = 150;
+    score = 0; timeLeft = 60; obstacles = []; speed = 220;
     document.getElementById('scoreDisplay').textContent = score;
     placeFood();
     if (currentMode === 'obstacle') for (let i = 0; i < 5; i++) addObstacle();
@@ -463,7 +463,7 @@ function step() {
         showScorePopup(food.x * CELL + CELL/2, food.y * CELL + CELL/2);
         placeFood();
         if (currentMode === 'obstacle' && score % 30 === 0) addObstacle();
-        if (currentMode === 'time' && score % 50 === 0) speed = Math.max(80, speed - 10);
+        if (currentMode === 'time' && score % 50 === 0) speed = Math.max(150, speed - 10);
     } else {
         snake.pop();
     }
