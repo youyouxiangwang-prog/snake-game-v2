@@ -698,9 +698,8 @@
                 const y = part.y * CELL_SIZE + 2;
                 const size = CELL_SIZE - 4;
                 
-                ctx.beginPath();
-                ctx.roundRect(x, y, size, size, 6);
-                ctx.fill();
+                // 圆角矩形
+                ctx.fillRect(x, y, size, size);
                 
                 // 蛇头眼睛
                 if (isHead) {
