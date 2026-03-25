@@ -1,1 +1,1 @@
-{"name":"snake-game-v2","private":true}
+{"name":"snake-game-v2","private":true,"dependencies":{"playwright":"^1.58.2"}}
