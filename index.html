@@ -417,6 +417,11 @@
             // 重置游戏状态
             initGame();
             
+            // 强制重新绘制（canvas可能在隐藏时无法正确渲染）
+            setTimeout(() => {
+                draw();
+            }, 50);
+            
             // 开始游戏
             isPlaying = true;
             if (gameLoop) clearInterval(gameLoop);
