@@ -1,5 +1,19 @@
 {
+  "name": "snake-game-v3",
+  "version": "5.0.0",
+  "description": "True 3D Low-poly Snake Game with Three.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "npx playwright test"
+  },
   "dependencies": {
-    "playwright": "^1.58.2"
+    "three": "^0.183.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2",
+    "vite": "^5.4.0"
   }
 }
