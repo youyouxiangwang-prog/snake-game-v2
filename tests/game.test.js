@@ -44,7 +44,7 @@ test.describe('Snake Game V3 - SPEC.md Compliance', () => {
             await page.click('.menu-btn.primary');
             await page.waitForTimeout(500);
             await page.evaluate(() => {
-                window.game.state = 'GAME_OVER';
+                window.game.state = 'gameOver';
             });
             await page.waitForTimeout(300);
             const gameOverOverlay = await page.locator('#gameOverOverlay');
@@ -246,7 +246,7 @@ test.describe('Snake Game V3 - SPEC.md Compliance', () => {
             });
             await page.waitForTimeout(500);
             const state = await page.evaluate(() => window.game.state);
-            expect(state).toBe('GAME_OVER');
+            expect(state).toBe('gameOver');
         });
 
         test('should trigger game over when hitting right wall (48)', async () => {
@@ -257,7 +257,7 @@ test.describe('Snake Game V3 - SPEC.md Compliance', () => {
             });
             await page.waitForTimeout(500);
             const state = await page.evaluate(() => window.game.state);
-            expect(state).toBe('GAME_OVER');
+            expect(state).toBe('gameOver');
         });
 
         test('should trigger game over when hitting top wall (-48)', async () => {
@@ -268,7 +268,7 @@ test.describe('Snake Game V3 - SPEC.md Compliance', () => {
             });
             await page.waitForTimeout(500);
             const state = await page.evaluate(() => window.game.state);
-            expect(state).toBe('GAME_OVER');
+            expect(state).toBe('gameOver');
         });
 
         test('should trigger game over when hitting bottom wall (48)', async () => {
@@ -279,7 +279,7 @@ test.describe('Snake Game V3 - SPEC.md Compliance', () => {
             });
             await page.waitForTimeout(500);
             const state = await page.evaluate(() => window.game.state);
-            expect(state).toBe('GAME_OVER');
+            expect(state).toBe('gameOver');
         });
     });
 
@@ -295,7 +295,7 @@ test.describe('Snake Game V3 - SPEC.md Compliance', () => {
             });
             await page.waitForTimeout(500);
             const state = await page.evaluate(() => window.game.state);
-            expect(state).toBe('GAME_OVER');
+            expect(state).toBe('gameOver');
         });
     });
 
