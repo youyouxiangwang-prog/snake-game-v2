@@ -390,10 +390,268 @@ snake-game-v3/
 
 ---
 
-## 12. 下一步
+## 12. 相机跟随系统
 
-- [ ] **Phase 1**: 创建 CONSTITUTION.md (设计原则)
-- [ ] **Phase 2**: 创建 SPEC.md (详细规范)
+### 需求确认
+1. **相机跟随蛇移动** - 蛇移动时相机平滑跟随
+2. **滚动视角** - 蛇头保持在画面前方，可动态调整
+
+### 实现方案
+
+#### 方案 1: 简单跟随 (推荐)
+```javascript
+const CAMERA_OFFSET = new THREE.Vector3(0, 15, 15); // 固定偏移
+const LOOK_AHEAD = 5; // 前方看多远
+
+function updateCamera() {
+    const head = snakeMesh.position;
+    
+    // 相机位置：跟随蛇 + 固定偏移
+    camera.position.x = head.x + CAMERA_OFFSET.x;
+    camera.position.y = CAMERA_OFFSET.y;
+    camera.position.z = head.z + CAMERA_OFFSET.z;
+    
+    // 相机朝向：蛇头前方
+    camera.lookAt(
+        head.x + snakeDirection.x * LOOK_AHEAD,
+        0,
+        head.z + snakeDirection.z * LOOK_AHEAD
+    );
+}
+```
+
+#### 方案 2: 平滑插值跟随
+```javascript
+function updateCamera() {
+    const targetX = snakeHead.x + CAMERA_OFFSET.x;
+    const targetZ = snakeHead.z + CAMERA_OFFSET.z;
+    
+    // 平滑移动 (lerp)
+    camera.position.x += (targetX - camera.position.x) * 0.05;
+    camera.position.z += (targetZ - camera.position.z) * 0.05;
+    camera.position.y = CAMERA_OFFSET.y;
+    
+    camera.lookAt(snakeHead.x, 0, snakeHead.z);
+}
+```
+
+#### 方案 3: 方向感知跟随
+```javascript
+// 根据蛇的移动方向动态调整相机偏移
+const cameraAngle = Math.atan2(snakeDirection.z, snakeDirection.x);
+const DISTANCE = 18;
+
+camera.position.x = snakeHead.x + Math.cos(cameraAngle + Math.PI) * DISTANCE;
+camera.position.y = 12 + Math.sin(cameraAngle + Math.PI) * 3; // 轻微俯冲
+camera.position.z = snakeHead.z + Math.sin(cameraAngle + Math.PI) * DISTANCE;
+```
+
+### 滚动边界
+```javascript
+const WORLD_BOUNDS = {
+    minX: -50, maxX: 50,
+    minZ: -50, maxZ: 50
+};
+
+// 限制相机和蛇在边界内
+function clampPosition(pos, min, max) {
+    return Math.max(min, Math.min(max, pos));
+}
+```
+
+---
+
+## 13. 舌头动画系统
+
+### 需求确认
+蛇头需要 **动态分叉舌头**，参考图显示舌头伸出状态
+
+### 实现方案
+
+#### 方案 1: 程序化动画 (推荐)
+```javascript
+// 舌头由两个细长三角形组成
+const tongueGroup = new THREE.Group();
+
+const tongueMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0xFF3333,
+    side: THREE.DoubleSide
+});
+
+// 左半边舌头
+const leftTongue = new THREE.Mesh(
+    new THREE.BufferGeometry(),
+    tongueMaterial
+);
+
+// 右半边舌头
+const rightTongue = new THREE.Mesh(
+    new THREE.BufferGeometry(),
+    tongueMaterial
+);
+
+tongueGroup.add(leftTongue, rightTongue);
+snakeHead.add(tongueGroup); // 添加到蛇头
+```
+
+#### 方案 2: 骨骼动画
+```javascript
+// 使用 Two.Bones 实现更自然的弯曲
+const tongueBone = new THREE.Bone();
+const tongueMesh = new THREE.SkinnedMesh(geometry, material);
+tongueMesh.add(tongueBone);
+```
+
+#### 舌头动画参数
+```javascript
+const tongueConfig = {
+    extendSpeed: 0.15,      // 伸出速度
+    retractSpeed: 0.2,     // 缩回速度
+    maxLength: 1.5,        // 最大长度
+    minLength: 0.1,        // 最小长度（收起状态）
+    flickerSpeed: 0.3,     // 颤抖速度
+    flickerAmount: 0.05    // 颤抖幅度
+};
+
+// 舌头状态机
+const tongueState = {
+    phase: 'idle',         // idle | extending | retracting
+    length: 0.1,
+    time: 0
+};
+
+function updateTongue(deltaTime) {
+    switch(tongueState.phase) {
+        case 'idle':
+            // 轻微颤抖
+            tongueState.time += deltaTime * tongueConfig.flickerSpeed;
+            tongueState.length = tongueConfig.minLength + 
+                Math.sin(tongueState.time) * tongueConfig.flickerAmount;
+            break;
+            
+        case 'extending':
+            tongueState.length += tongueConfig.extendSpeed * deltaTime;
+            if (tongueState.length >= tongueConfig.maxLength) {
+                tongueState.phase = 'retracting';
+            }
+            break;
+            
+        case 'retracting':
+            tongueState.length -= tongueConfig.retractSpeed * deltaTime;
+            if (tongueState.length <= tongueConfig.minLength) {
+                tongueState.length = tongueConfig.minLength;
+                tongueState.phase = 'idle';
+            }
+            break;
+    }
+    
+    // 更新舌头几何体
+    updateTongueGeometry(tongueState.length);
+}
+```
+
+#### 舌头几何体更新
+```javascript
+function updateTongueGeometry(length) {
+    // 创建V形舌头
+    const angle = 0.3; // 分叉角度 (弧度)
+    
+    const leftPoints = [
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(-length * Math.sin(angle), 0, -length * Math.cos(angle)),
+    ];
+    
+    const rightPoints = [
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(length * Math.sin(angle), 0, -length * Math.cos(angle)),
+    ];
+    
+    // 生成几何体
+    const leftShape = createTongueShape(leftPoints, 0.08);
+    const rightShape = createTongueShape(rightPoints, 0.08);
+    
+    leftTongue.geometry = leftShape;
+    rightTongue.geometry = rightShape;
+}
+```
+
+---
+
+## 14. 蛇身移动系统
+
+### 段跟随算法
+```javascript
+// 每个蛇身段跟随前一节的位置
+class SnakeSegment {
+    constructor(position) {
+        this.position = position.clone();
+        this.targetPosition = position.clone();
+        this.mesh = createMesh();
+    }
+    
+    update(followTarget, delay = 0.1) {
+        // 延迟跟随：越靠后的段跟随越慢
+        this.targetPosition.copy(followTarget.position);
+        
+        // 平滑插值
+        this.position.lerp(this.targetPosition, delay);
+        this.mesh.position.copy(this.position);
+        
+        // 旋转朝向移动方向
+        const direction = new THREE.Vector3()
+            .subVectors(this.targetPosition, this.position)
+            .normalize();
+        
+        if (direction.length() > 0.01) {
+            const angle = Math.atan2(direction.x, direction.z);
+            this.mesh.rotation.y = angle;
+        }
+    }
+}
+
+// 初始化蛇身
+const snakeSegments = [];
+for (let i = 0; i < INITIAL_LENGTH; i++) {
+    snakeSegments.push(new SnakeSegment(
+        new THREE.Vector3(0, 0.5, i * SEGMENT_SPACING)
+    ));
+}
+
+// 更新循环
+function updateSnake() {
+    // 蛇头直接响应输入
+    snakeHead.position.x += moveX * SPEED;
+    snakeHead.position.z += moveZ * SPEED;
+    
+    // 每节跟随前一节
+    for (let i = 1; i < snakeSegments.length; i++) {
+        snakeSegments[i].update(snakeSegments[i - 1], 0.15 + i * 0.02);
+    }
+}
+```
+
+---
+
+## 15. 参考资源更新
+
+### 相机跟随
+- [Three.js 相机教程](https://threejs.org/manual/#en/cameras)
+- [平滑跟随实现](https://codepen.io/anon/pen/xyz)
+
+### 舌头动画
+- [Three.js 形状动画](https://threejs.org/examples/#webgl_modifier_tessellation)
+- [程序化动画](https://codepen.io/threejs/pen/JXBXVw)
+
+### 蛇类游戏参考
+- [Slither.io 源码分析](https://github.com/huytd/slither.io-clone)
+- [低多边形蛇建模](https://sketchfab.com/3d-models/low-poly-snake-47f6b9f9)
+
+---
+
+## 16. 下一步
+
+- [ ] **Phase 1**: 更新 CONSTITUTION.md (设计原则) - 包含相机跟随、滚动、舌头动画
+- [ ] **Phase 2**: 更新 SPEC.md (详细规范)
 - [ ] **Phase 3**: CLARIFY.md (澄清问题)
 - [ ] **Phase 4**: PLAN.md (实施计划)
 - [ ] **Phase 5**: 实现代码
@@ -401,3 +659,4 @@ snake-game-v3/
 ---
 
 *Research Complete - Ready for Phase 1*
+*Updated with: Camera follow, scrolling view, tongue animation details*
