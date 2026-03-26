@@ -47,8 +47,9 @@ export class Obstacle {
         let x, z;
         
         while (!valid && attempts < 100) {
-            x = Math.floor(Math.random() * 40) - 20;
-            z = Math.floor(Math.random() * 40) - 20;
+            // Spawn within ±48 (matching COLLISION_CONFIG bounds)
+            x = Math.floor(Math.random() * 96) - 48;
+            z = Math.floor(Math.random() * 96) - 48;
             
             // Check distance from snake head
             const dxH = x - snakeHead.x;

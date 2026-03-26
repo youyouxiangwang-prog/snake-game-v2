@@ -15,16 +15,19 @@ export class Snake {
             turnSpeed: 10
         };
         
-        // Arena bounds (match Scene.js)
-        this.arenaSize = 14; // Half of 30, with padding
+        // Arena bounds (match Scene.js and COLLISION_CONFIG: -48 to 48)
+        this.arenaSize = 48;
         
         // Current state
         this.segments = []; // {x, z, mesh}
+        this.prevPositions = []; // For smooth interpolation
         this.direction = { x: 0, z: -1 };
         this.nextDirection = { x: 0, z: -1 };
         this.isGrowing = false;
         this.moveTimer = 0;
         this.moveInterval = 0.2; // seconds between moves
+        this.lerpFactor = 0.25; // Smoothing factor for movement interpolation
+        this.interpolationProgress = 0; // 0 to 1 between moves
         
         // 3D meshes
         this.headMesh = null;
@@ -152,6 +155,7 @@ export class Snake {
     reset() {
         // Clear segments
         this.segments = [];
+        this.prevPositions = [];
         
         // Create initial segments
         const startX = 0;
@@ -162,6 +166,11 @@ export class Snake {
                 x: startX,
                 z: startZ + i * this.config.segmentSpacing,
                 mesh: null
+            });
+            // Also store prev positions for interpolation
+            this.prevPositions.push({
+                x: startX,
+                z: startZ + i * this.config.segmentSpacing
             });
         }
         
@@ -206,6 +215,10 @@ export class Snake {
         if (this.moveTimer >= this.moveInterval) {
             this.moveTimer = 0;
             this.move();
+            this.interpolationProgress = 0;
+        } else {
+            // Track interpolation progress within the interval
+            this.interpolationProgress = Math.min(1, this.moveTimer / this.moveInterval);
         }
         
         // Update mesh positions
@@ -215,6 +228,9 @@ export class Snake {
     }
     
     move() {
+        // Store previous positions for interpolation before moving
+        this.prevPositions = this.segments.map(s => ({ x: s.x, z: s.z }));
+        
         // Move head
         const head = this.segments[0];
         head.x += this.direction.x;
@@ -222,11 +238,14 @@ export class Snake {
         
         // Grow if needed
         if (this.isGrowing) {
+            const lastSeg = this.segments[this.segments.length - 1];
             this.segments.push({
-                x: head.x,
-                z: head.z,
+                x: lastSeg.x,
+                z: lastSeg.z,
                 mesh: null
             });
+            // Add prev position for new segment
+            this.prevPositions.push({ x: lastSeg.x, z: lastSeg.z });
             this.isGrowing = false;
         }
         
@@ -240,29 +259,54 @@ export class Snake {
     }
     
     updateMeshPositions() {
+        // Calculate interpolation (ease-out for smooth deceleration)
+        const t = this.easeOutCubic(this.interpolationProgress);
+        
         // Position head
         const head = this.segments[0];
-        this.headMesh.position.set(head.x, 0.4, head.z);
+        let headX = head.x;
+        let headZ = head.z;
+        
+        // Interpolate head if we have prev positions
+        if (this.prevPositions.length > 0 && this.interpolationProgress > 0) {
+            const prevHead = this.prevPositions[0];
+            headX = prevHead.x + (head.x - prevHead.x) * t;
+            headZ = prevHead.z + (head.z - prevHead.z) * t;
+        }
+        
+        this.headMesh.position.set(headX, 0.4, headZ);
         this.headMesh.rotation.y = Math.atan2(this.direction.x, this.direction.z);
         this.headMesh.visible = true;
         
-        // Position body segments
+        // Position body segments with smooth interpolation
         for (let i = 0; i < this.segments.length - 1; i++) {
             const seg = this.segments[i];
             const mesh = this.bodyMeshes[i];
             
             if (mesh && i < this.bodyMeshes.length) {
-                mesh.position.set(seg.x, 0.35, seg.z);
+                let segX = seg.x;
+                let segZ = seg.z;
+                
+                // Interpolate if we have prev positions
+                if (this.prevPositions.length > i + 1 && this.interpolationProgress > 0) {
+                    const prevSeg = this.prevPositions[i + 1];
+                    segX = prevSeg.x + (seg.x - prevSeg.x) * t;
+                    segZ = prevSeg.z + (seg.z - prevSeg.z) * t;
+                }
+                
+                mesh.position.set(segX, 0.35, segZ);
                 mesh.visible = true;
                 
                 // Calculate rotation towards next segment
                 if (i < this.segments.length - 2) {
                     const next = this.segments[i + 1];
-                    const angle = Math.atan2(next.x - seg.x, next.z - seg.z);
+                    const nextX = seg.x + (next.x - seg.x) * t;
+                    const nextZ = seg.z + (next.z - seg.z) * t;
+                    const angle = Math.atan2(nextX - segX, nextZ - segZ);
                     mesh.rotation.y = angle;
                 } else {
                     // Last body segment, face the tail
-                    const angle = Math.atan2(head.x - seg.x, head.z - seg.z);
+                    const angle = Math.atan2(headX - segX, headZ - segZ);
                     mesh.rotation.y = angle;
                 }
             }
@@ -272,10 +316,24 @@ export class Snake {
         if (this.segments.length >= 2) {
             const last = this.segments[this.segments.length - 1];
             const prev = this.segments[this.segments.length - 2];
-            this.tailMesh.position.set(last.x, 0.3, last.z);
+            let tailX = last.x;
+            let tailZ = last.z;
+            
+            if (this.prevPositions.length >= this.segments.length && this.interpolationProgress > 0) {
+                const prevLast = this.prevPositions[this.segments.length - 1];
+                tailX = prevLast.x + (last.x - prevLast.x) * t;
+                tailZ = prevLast.z + (last.z - prevLast.z) * t;
+            }
+            
+            this.tailMesh.position.set(tailX, 0.3, tailZ);
             this.tailMesh.rotation.y = Math.atan2(prev.x - last.x, prev.z - last.z) + Math.PI / 2;
             this.tailMesh.visible = true;
         }
+    }
+    
+    // Ease-out cubic for smooth interpolation
+    easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
     }
     
     updateVisuals(time) {

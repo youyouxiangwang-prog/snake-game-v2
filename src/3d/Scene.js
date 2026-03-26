@@ -6,8 +6,8 @@ export class Scene {
         this.containerId = containerId;
         this.container = document.getElementById(containerId);
         
-        // Arena config
-        this.arenaSize = 14;
+        // Arena config - matches COLLISION_CONFIG bounds: -48 to 48
+        this.arenaSize = 48;
         this.wallHeight = 2;
         
         // Create scene
@@ -75,11 +75,11 @@ export class Scene {
         this.sunLight.shadow.mapSize.width = 1024;
         this.sunLight.shadow.mapSize.height = 1024;
         this.sunLight.shadow.camera.near = 1;
-        this.sunLight.shadow.camera.far = 80;
-        this.sunLight.shadow.camera.left = -30;
-        this.sunLight.shadow.camera.right = 30;
-        this.sunLight.shadow.camera.top = 30;
-        this.sunLight.shadow.camera.bottom = -30;
+        this.sunLight.shadow.camera.far = 150;
+        this.sunLight.shadow.camera.left = -60;
+        this.sunLight.shadow.camera.right = 60;
+        this.sunLight.shadow.camera.top = 60;
+        this.sunLight.shadow.camera.bottom = -60;
         this.scene.add(this.sunLight);
         
         // Fill light (softer, from below)
@@ -89,10 +89,11 @@ export class Scene {
     }
     
     createGround() {
-        const size = this.arenaSize;
+        // Ground geometry - 100x100 per WORLD_CONFIG.size
+        const groundSize = 100;
         
         // Ground geometry - arena floor
-        const groundGeo = new THREE.PlaneGeometry(size * 2, size * 2, 30, 30);
+        const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 30, 30);
         
         // Slight height variation for low-poly effect
         const positions = groundGeo.attributes.position;
@@ -100,14 +101,14 @@ export class Scene {
             const x = positions.getX(i);
             const y = positions.getY(i);
             // Keep center flat, edges slightly bumpy
-            const distFromCenter = Math.sqrt(x*x + y*y) / size;
+            const distFromCenter = Math.sqrt(x*x + y*y) / (groundSize / 2);
             positions.setZ(i, Math.sin(x * 0.3) * Math.cos(y * 0.3) * 0.1 * Math.min(1, distFromCenter));
         }
         groundGeo.computeVertexNormals();
         
-        // Ground material with flat shading for low-poly look
+        // Ground material - SPEC GROUND_CONFIG color 0x228822
         const groundMat = new THREE.MeshLambertMaterial({
-            color: 0x4ade80,
+            color: 0x228822,
             flatShading: true
         });
         
@@ -117,8 +118,11 @@ export class Scene {
         this.ground.receiveShadow = true;
         this.scene.add(this.ground);
         
+        // Create grid lines using LineSegments
+        this.createGridLines(groundSize);
+        
         // Arena boundary marker (subtle ring)
-        const ringGeo = new THREE.RingGeometry(size - 0.5, size, 4);
+        const ringGeo = new THREE.RingGeometry(this.arenaSize - 0.5, this.arenaSize, 4);
         const ringMat = new THREE.MeshBasicMaterial({
             color: 0x114411,
             side: THREE.DoubleSide
@@ -127,6 +131,34 @@ export class Scene {
         ring.rotation.x = -Math.PI / 2;
         ring.position.y = 0.01;
         this.scene.add(ring);
+    }
+    
+    createGridLines(size) {
+        // Grid with 1-unit cells, dark green lines on ground
+        const gridMat = new THREE.LineBasicMaterial({ 
+            color: 0x1a4a1a,
+            transparent: true,
+            opacity: 0.4
+        });
+        
+        const points = [];
+        const half = size / 2;
+        
+        // Create grid lines from -50 to 50 (100x100 grid)
+        for (let i = -50; i <= 50; i++) {
+            // Lines along X axis (varying Z)
+            points.push(new THREE.Vector3(-half, 0, i));
+            points.push(new THREE.Vector3(half, 0, i));
+            
+            // Lines along Z axis (varying X)
+            points.push(new THREE.Vector3(i, 0, -half));
+            points.push(new THREE.Vector3(i, 0, half));
+        }
+        
+        const gridGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const gridLines = new THREE.LineSegments(gridGeo, gridMat);
+        gridLines.position.y = 0.02;
+        this.scene.add(gridLines);
     }
     
     createBoundaryWalls() {
