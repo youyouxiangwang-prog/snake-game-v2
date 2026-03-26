@@ -138,6 +138,11 @@ export class Game {
         this.score += points;
         this.ui.score.textContent = `分数: ${this.score}`;
         
+        // Score pop animation
+        this.ui.score.classList.remove('pop');
+        void this.ui.score.offsetWidth;
+        this.ui.score.classList.add('pop');
+        
         // Spawn new obstacle in obstacle mode
         if (this.mode === 'obstacle' && this.score % 30 === 0) {
             this.obstacles.spawn(this.snake.getHeadPosition(), this.snake.getBodyPositions());
@@ -147,6 +152,14 @@ export class Game {
         if (this.mode === 'time' && this.score % 50 === 0) {
             this.snake.increaseSpeed();
         }
+    }
+    
+    triggerScreenShake() {
+        const container = document.getElementById('canvasContainer');
+        container.classList.remove('screen-shake');
+        void container.offsetWidth;
+        container.classList.add('screen-shake');
+        setTimeout(() => container.classList.remove('screen-shake'), 300);
     }
     
     animate(time) {
@@ -172,6 +185,7 @@ export class Game {
                                this.obstacles.checkCollision(this.snake.getHeadPosition());
             
             if (hitWall || hitSelf || hitObstacle) {
+                this.triggerScreenShake();
                 this.showGameOver();
             }
             

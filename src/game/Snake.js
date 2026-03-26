@@ -6,14 +6,17 @@ export class Snake {
         this.scene = scene;
         this.scene3d = scene;
         
-        // Snake configuration
+        // Snake configuration - optimized for bounded arena
         this.config = {
             initialLength: 5,
-            maxLength: 50,
+            maxLength: 30,        // Reduced for smaller arena
             speed: 5,
             segmentSpacing: 0.8,
             turnSpeed: 10
         };
+        
+        // Arena bounds (match Scene.js)
+        this.arenaSize = 14; // Half of 30, with padding
         
         // Current state
         this.segments = []; // {x, z, mesh}
