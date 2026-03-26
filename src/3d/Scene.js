@@ -7,12 +7,12 @@ export class Scene {
         this.container = document.getElementById(containerId);
         
         // Arena config
-        this.arenaSize = 30;
+        this.arenaSize = 14;
         this.wallHeight = 2;
         
         // Create scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x1a4a1a);
+        this.scene.background = new THREE.Color(0x0f172a);
         
         // Camera
         this.camera = new THREE.PerspectiveCamera(
@@ -51,7 +51,7 @@ export class Scene {
         this.createBoundaryWalls();
         
         // Fog (for depth)
-        this.scene.fog = new THREE.Fog(0x1a4a1a, 40, 80);
+        this.scene.fog = new THREE.Fog(0x0f172a, 40, 80);
         
         // FPS tracking
         this.lastTime = performance.now();
@@ -107,7 +107,7 @@ export class Scene {
         
         // Ground material with flat shading for low-poly look
         const groundMat = new THREE.MeshLambertMaterial({
-            color: 0x228822,
+            color: 0x4ade80,
             flatShading: true
         });
         

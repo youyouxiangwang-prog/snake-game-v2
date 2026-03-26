@@ -24,6 +24,14 @@ export class Obstacle {
         });
     }
     
+    get items() {
+        return this.obstacles;
+    }
+    
+    get length() {
+        return this.obstacles.length;
+    }
+    
     clear() {
         this.obstacles.forEach(obs => {
             this.scene.getScene().remove(obs.mesh);

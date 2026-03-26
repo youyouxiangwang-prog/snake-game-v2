@@ -4,16 +4,28 @@ import { Scene } from '../3d/Scene.js';
 import { Snake } from './Snake.js';
 import { Food } from './Food.js';
 import { Obstacle } from './Obstacle.js';
+import { PowerUp, POWERUP_TYPES } from './PowerUp.js';
+import { SkinsManager } from './Skins.js';
 import { Input } from '../utils/Input.js';
 
 export class Game {
     constructor() {
         // Game state
-        this.state = 'MENU'; // MENU, PLAYING, PAUSED, GAME_OVER
-        this.mode = 'classic';
+        this.state = 'menu'; // menu, playing, paused, gameOver
+        this.mode = 'CLASSIC';
         this.score = 0;
         this.timeLeft = 60;
         this.lastTime = 0;
+        
+        // Collision bounds per SPEC Section 9.3
+        this.collisionConfig = {
+            bounds: { minX: -48, maxX: 48, minZ: -48, maxZ: 48 }
+        };
+        
+        // Score config per SPEC Section 11.1
+        this.scoringConfig = {
+            eatFood: 10
+        };
         
         // World config
         this.worldSize = 100;
@@ -26,6 +38,8 @@ export class Game {
         this.snake = new Snake(this.scene3d);
         this.food = new Food(this.scene3d);
         this.obstacles = new Obstacle(this.scene3d);
+        this.powerUp = new PowerUp(this.scene3d);
+        this.skinsManager = new SkinsManager();
         
         // Input handler
         this.input = new Input(this.snake);
@@ -52,13 +66,13 @@ export class Game {
     
     setMode(mode) {
         this.mode = mode;
-        const modeNames = { classic: '🎮 经典', time: '⏱️ 限时', obstacle: '🧱 障碍' };
+        const modeNames = { CLASSIC: '🎮 经典', TIME: '⏱️ 限时', OBSTACLE: '🧱 障碍' };
         this.ui.mode.textContent = modeNames[mode] || mode;
     }
     
     startGame() {
         // Reset state
-        this.state = 'PLAYING';
+        this.state = 'playing';
         this.score = 0;
         this.timeLeft = 60;
         this.lastTime = performance.now();
@@ -71,7 +85,8 @@ export class Game {
         
         // Clear obstacles
         this.obstacles.clear();
-        if (this.mode === 'obstacle') {
+        this.powerUp.clear();
+        if (this.mode === 'OBSTACLE') {
             for (let i = 0; i < 5; i++) {
                 this.obstacles.spawn(this.snake.getHeadPosition(), []);
             }
@@ -82,24 +97,27 @@ export class Game {
         this.ui.menu.classList.add('hidden');
         this.ui.gameOver.classList.add('hidden');
         this.ui.pause.classList.add('hidden');
-        this.ui.time.textContent = this.mode === 'time' ? `⏱️ ${Math.ceil(this.timeLeft)}s` : '';
+        this.ui.time.textContent = this.mode === 'TIME' ? `⏱️ ${Math.ceil(this.timeLeft)}s` : '';
     }
     
     showMenu() {
-        this.state = 'MENU';
+        this.state = 'menu';
         this.ui.menu.classList.remove('hidden');
         this.ui.gameOver.classList.add('hidden');
         this.ui.pause.classList.add('hidden');
     }
     
     showGameOver() {
-        this.state = 'GAME_OVER';
+        this.state = 'gameOver';
         
-        // Check high score
-        const key = `snakeV3_${this.mode}`;
-        const prev = parseInt(localStorage.getItem(key) || '0');
+        // Check high score - use snakeV3_highscores per SPEC Section 11.2
+        const key = 'snakeV3_highscores';
+        const stored = localStorage.getItem(key);
+        const highScores = stored ? JSON.parse(stored) : {};
+        const prev = highScores[this.mode] || 0;
         if (this.score > prev) {
-            localStorage.setItem(key, this.score.toString());
+            highScores[this.mode] = this.score;
+            localStorage.setItem(key, JSON.stringify(highScores));
             this.ui.newRecord.classList.remove('hidden');
         } else {
             this.ui.newRecord.classList.add('hidden');
@@ -110,28 +128,40 @@ export class Game {
     }
     
     showPause() {
-        if (this.state !== 'PLAYING') return;
-        this.state = 'PAUSED';
+        if (this.state !== 'playing') return;
+        this.state = 'paused';
         this.ui.pause.classList.remove('hidden');
     }
     
     resume() {
-        if (this.state !== 'PAUSED') return;
-        this.state = 'PLAYING';
+        if (this.state !== 'paused') return;
+        this.state = 'playing';
         this.lastTime = performance.now();
         this.ui.pause.classList.add('hidden');
     }
     
     showHighScores() {
-        const classic = localStorage.getItem('snakeV3_classic') || '0';
-        const time = localStorage.getItem('snakeV3_time') || '0';
-        const obstacle = localStorage.getItem('snakeV3_obstacle') || '0';
+        const key = 'snakeV3_highscores';
+        const stored = localStorage.getItem(key);
+        const highScores = stored ? JSON.parse(stored) : {};
+        const classic = highScores.CLASSIC || 0;
+        const time = highScores.TIME || 0;
+        const obstacle = highScores.OBSTACLE || 0;
         alert(`🏆 最高分\n🎮 经典: ${classic}\n⏱️ 限时: ${time}\n🧱 障碍: ${obstacle}`);
     }
     
     handleDirection(dir) {
-        if (this.state !== 'PLAYING') return;
+        if (this.state !== 'playing') return;
         this.input.setDirection(dir);
+    }
+    
+    handleFoodCollision() {
+        // Check food collision
+        if (this.food.checkCollision(this.snake.getHeadPosition())) {
+            this.addScore(this.scoringConfig.eatFood);
+            this.snake.grow();
+            this.food.spawn(this.snake.getHeadPosition(), this.snake.getBodyPositions());
+        }
     }
     
     addScore(points) {
@@ -144,12 +174,12 @@ export class Game {
         this.ui.score.classList.add('pop');
         
         // Spawn new obstacle in obstacle mode
-        if (this.mode === 'obstacle' && this.score % 30 === 0) {
+        if (this.mode === 'OBSTACLE' && this.score % 30 === 0) {
             this.obstacles.spawn(this.snake.getHeadPosition(), this.snake.getBodyPositions());
         }
         
         // Speed up in time mode
-        if (this.mode === 'time' && this.score % 50 === 0) {
+        if (this.mode === 'TIME' && this.score % 50 === 0) {
             this.snake.increaseSpeed();
         }
     }
@@ -168,9 +198,9 @@ export class Game {
         const deltaTime = (time - this.lastTime) / 1000;
         this.lastTime = time;
         
-        if (this.state === 'PLAYING') {
+        if (this.state === 'playing') {
             // Update time in time mode
-            if (this.mode === 'time') {
+            if (this.mode === 'TIME') {
                 this.timeLeft -= deltaTime;
                 this.ui.time.textContent = `⏱️ ${Math.ceil(Math.max(0, this.timeLeft))}s`;
                 if (this.timeLeft <= 0) {
@@ -181,7 +211,7 @@ export class Game {
             // Update snake
             const hitWall = this.snake.update(deltaTime, this.worldSize);
             const hitSelf = this.snake.checkSelfCollision();
-            const hitObstacle = this.mode === 'obstacle' && 
+            const hitObstacle = this.mode === 'OBSTACLE' && 
                                this.obstacles.checkCollision(this.snake.getHeadPosition());
             
             if (hitWall || hitSelf || hitObstacle) {
@@ -191,9 +221,15 @@ export class Game {
             
             // Check food collision
             if (this.food.checkCollision(this.snake.getHeadPosition())) {
-                this.addScore(10);
+                this.addScore(this.scoringConfig.eatFood);
                 this.snake.grow();
                 this.food.spawn(this.snake.getHeadPosition(), this.snake.getBodyPositions());
+            }
+            
+            // Check power-up collision
+            const powerUpType = this.powerUp.checkCollision(this.snake.getHeadPosition());
+            if (powerUpType) {
+                this.powerUp.activateEffect(powerUpType, this);
             }
             
             // Update camera
@@ -203,6 +239,7 @@ export class Game {
         // Always update visuals
         this.snake.updateVisuals(time);
         this.food.update(time);
+        this.powerUp.update(time);
         
         // Render
         this.scene3d.render();

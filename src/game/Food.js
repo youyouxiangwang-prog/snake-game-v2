@@ -9,6 +9,11 @@ export class Food {
         this.createMesh();
     }
     
+    get x() { return this.position.x; }
+    get z() { return this.position.z; }
+    set x(val) { this.position.x = val; }
+    set z(val) { this.position.z = val; }
+    
     createMesh() {
         this.mesh = new THREE.Group();
         
