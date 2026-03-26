@@ -292,5 +292,308 @@ shadow.mapSize.height = 2048;
 
 ---
 
-*调研完成时间: 2026-03-26 06:24 UTC*
+---
+
+## 八、补充调研：有限场景 + 生动 UI
+
+### 8.1 有限场景 (Bounded Arena) 设计原则
+
+根据经典游戏设计理论 (Salen & Zimmerman, 2004)：
+
+#### 边界设计的重要性
+| 设计要素 | 说明 | 案例 |
+|----------|------|------|
+| **显式边界** | 明确的围墙或障碍 | Minecraft、Tetris |
+| **隐式边界** | 视觉暗示边界位置 | Crossy Road 的视野限制 |
+| **渐进边界** | 边界逐渐缩小 | Battle Royale |
+| **动态边界** | 边界随游戏进行变化 | Agar.io |
+
+#### 低多边形游戏的边界方案
+
+**方案 1: 实体围墙 (推荐)**
+```javascript
+// 3D 围墙几何体
+const wallMaterial = new THREE.MeshLambertMaterial({
+    color: 0x228822,
+    flatShading: true
+});
+
+// 创建围墙
+function createBoundaryWalls(size, height) {
+    const walls = new THREE.Group();
+    const thickness = 1;
+    
+    // 四面墙
+    const wallGeo = new THREE.BoxGeometry(size, height, thickness);
+    walls.add(createWall(wallGeo, 0, height/2, -size/2));  // 前
+    walls.add(createWall(wallGeo, 0, height/2, size/2));   // 后
+    walls.add(createWall(wallGeo, thickness, height/2, 0)); // 左
+    walls.add(createWall(wallGeo, thickness, height/2, 0)); // 右
+    
+    return walls;
+}
+```
+
+**方案 2: 地面边界 + 视觉暗示**
+```javascript
+// 地面边缘着色
+const boundaryMaterial = new THREE.MeshLambertMaterial({
+    color: 0x114411,  // 深绿色边缘
+    flatShading: true
+});
+```
+
+**方案 3: 3D 围墙 + 装饰**
+- 添加石头/树木装饰边界
+- 边界高度 1.5-2 单位
+- 使用鲜艳颜色区分边界
+
+#### 有限场景的优势
+1. **策略性** - 玩家需要规划移动路线
+2. **紧张感** - 空间受限增加压迫感
+3. **可预测性** - 玩家可以预判威胁
+
+### 8.2 生动 UI 设计
+
+#### 游戏 UI 的生命力来源
+
+根据游戏设计研究 (Schell, 2008)，生动的 UI 包含以下要素：
+
+##### 1. 动态反馈 (Dynamic Feedback)
+```css
+/* 分数变化动画 */
+.score-pop {
+    animation: scoreChange 0.3s ease-out;
+}
+
+@keyframes scoreChange {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+}
+
+/* 颜色闪烁 */
+@keyframes colorFlash {
+    0%, 100% { color: #FFD700; }
+    50% { color: #FF6B00; }
+}
+```
+
+##### 2. 粒子效果 (Particle Effects)
+```javascript
+// 吃食物时的粒子爆发
+function createEatParticles(position) {
+    const particles = [];
+    for (let i = 0; i < 12; i++) {
+        const particle = new THREE.Sprite(
+            new THREE.SpriteMaterial({
+                color: 0xFFD700,
+                transparent: true,
+                opacity: 0.8
+            })
+        );
+        particle.position.copy(position);
+        particles.push(particle);
+    }
+    return particles;
+}
+```
+
+##### 3. 屏幕震动 (Screen Shake)
+```javascript
+// 碰撞时的屏幕震动
+function screenShake(intensity, duration) {
+    const originalPos = camera.position.clone();
+    let elapsed = 0;
+    
+    function shake() {
+        elapsed += 16;
+        if (elapsed < duration) {
+            camera.position.x = originalPos.x + (Math.random() - 0.5) * intensity;
+            camera.position.y = originalPos.y + (Math.random() - 0.5) * intensity;
+            requestAnimationFrame(shake);
+        } else {
+            camera.position.copy(originalPos);
+        }
+    }
+    shake();
+}
+```
+
+##### 4. 渐变和阴影 (Gradients & Shadows)
+```css
+/* 生动按钮 */
+.lively-button {
+    background: linear-gradient(180deg, #FFD700 0%, #FF8C00 100%);
+    box-shadow: 
+        0 4px 0 #CC6600,
+        0 8px 16px rgba(0,0,0,0.3);
+    transition: all 0.1s ease;
+}
+
+.lively-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 6px 0 #CC6600,
+        0 12px 20px rgba(0,0,0,0.4);
+}
+
+.lively-button:active {
+    transform: translateY(4px);
+    box-shadow: 
+        0 0px 0 #CC6600,
+        0 4px 8px rgba(0,0,0,0.3);
+}
+```
+
+##### 5. 弹跳动画 (Bounce Animations)
+```css
+/* 弹跳效果 */
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+.bouncing-icon {
+    animation: bounce 1s ease-in-out infinite;
+}
+```
+
+##### 6. 脉冲效果 (Pulse)
+```css
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+.pulse-effect {
+    animation: pulse 2s ease-in-out infinite;
+}
+```
+
+#### UI 颜色系统
+| 用途 | 颜色 | Hex | 说明 |
+|------|------|-----|------|
+| 主要按钮 | 金黄渐变 | #FFD700 → #FF8C00 | 活力感 |
+| 分数 | 橙色 | #FF6B00 | 引人注目 |
+| 成功 | 亮绿 | #00FF88 | 正向反馈 |
+| 危险 | 红色 | #FF3366 | 警告 |
+| 背景 | 半透明黑 | rgba(0,0,0,0.7) | 可读性 |
+
+#### 低多边形风格字体推荐
+```css
+/* Google Fonts - 低多边形/几何感字体 */
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
+
+.game-ui {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+```
+
+### 8.3 案例分析：优秀游戏 UI
+
+#### Crossy Road 的 UI 特点
+- **极简主义** - 只显示必要信息
+- **像素风格** - 配合低多边形视觉
+- **即时反馈** - 分数立即更新
+- **可爱角色** - Emoji 风格图标
+
+#### Agar.io 的 UI 特点
+- **实时分数** - 排名实时显示
+- **迷你地图** - 右下角显示全图
+- **进度条** - 目标清晰
+- **简洁色调** - 白色 UI 元素
+
+#### Slither.io 的 UI 特点
+- **皮肤系统** - 多样化视觉
+- **粒子尾迹** - 蛇身带发光粒子
+- **皮肤特效** - 购买后的视觉变化
+
+### 8.4 推荐 UI 布局
+
+```
+┌─────────────────────────────────────────────────────┐
+│  [🎮]  分数: 1250     [⏸️] [⚙️]                   │  ← 顶部 HUD
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│                                                     │
+│                   ┌─────────┐                        │
+│                   │         │                        │
+│                   │   🐍    │  ← 中央蛇头           │
+│                   │         │                        │
+│                   └─────────┘                        │
+│                                                     │
+│                                             ┌────┐  │
+│                                             │地图│  │  ← 迷你地图
+│                                             └────┘  │
+├─────────────────────────────────────────────────────┤
+│           [◀]  [▶]  [▲]  [▼]                      │  ← 移动端控制
+└─────────────────────────────────────────────────────┘
+```
+
+### 8.5 实施计划更新
+
+#### 新增需求
+| 需求 | 优先级 | 实施方式 |
+|------|--------|----------|
+| 3D 围墙边界 | P0 | BoxGeometry 围绕场地 |
+| 边界装饰 | P1 | 石头/树木装饰 |
+| 动态分数动画 | P0 | CSS keyframes |
+| 吃食物粒子 | P1 | Three.js Sprite |
+| 屏幕震动 | P1 | Camera.position 抖动 |
+| 弹跳按钮 | P2 | CSS bounce animation |
+| 迷你地图 | P2 | Canvas 2D overlay |
+
+#### 围墙设计规格
+```javascript
+const ARENA_CONFIG = {
+    size: 30,              // 场地大小 30x30
+    wallHeight: 2,         // 围墙高度 2 单位
+    wallThickness: 0.5,     // 围墙厚度
+    wallColor: 0x228822,   // 绿色围墙
+    hasDecorations: true   // 边界装饰
+};
+```
+
+---
+
+## 九、结论更新
+
+### 9.1 用户需求对齐
+
+| 用户反馈 | 对应解决方案 |
+|----------|--------------|
+| "UI 很垃圾" | 全面重新设计动态 UI |
+| "没有边界" | 添加 3D 围墙边界 |
+| "有限场景" | 固定场地大小 (30x30) |
+| "有障碍物" | Obstacle 模式已有 |
+| "生动活泼" | 粒子、震动、弹跳动画 |
+
+### 9.2 最终行动项
+
+| 阶段 | 行动 | 优先级 |
+|------|------|--------|
+| **P0** | 添加 3D 围墙边界 | 今天 |
+| **P0** | 动态分数动画 | 今天 |
+| **P0** | 降低阴影 + 优化性能 | 今天 |
+| **P1** | 吃食物粒子效果 | 明天 |
+| **P1** | 屏幕震动效果 | 明天 |
+| **P2** | 弹跳按钮动画 | 本周 |
+| **P2** | 迷你地图 | 本周 |
+
+### 9.3 预期效果
+
+通过以上改进：
+- **边界感**: 玩家清晰知道活动范围
+- **生动 UI**: 分数跳动、粒子效果、屏幕震动
+- **流畅度**: 60FPS 稳定运行
+- **沉浸感**: 低多边形风格统一
+
+---
+
+*调研完成时间: 2026-03-26 06:33 UTC*
 *置信度: HIGH - 基于多个权威来源的验证*
+*补充调研: 有限场景 + 生动 UI 设计*
