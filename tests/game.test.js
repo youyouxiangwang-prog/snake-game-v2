@@ -45,7 +45,7 @@ test.describe('Game State Machine', () => {
         page.on('console', msg => {
             if (msg.type() === 'error') errors.push(msg.text());
         });
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -217,7 +217,7 @@ test.describe('World Configuration (SPEC Section 2.1)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -258,7 +258,7 @@ test.describe('Collision Detection (SPEC Section 5.3)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -361,7 +361,7 @@ test.describe('Snake Movement (SPEC Section 6.2)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -503,7 +503,7 @@ test.describe('Touch Controls (SPEC Section 3.4)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -598,7 +598,7 @@ test.describe('Scoring System (SPEC Section 8.1)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -687,7 +687,7 @@ test.describe('Snake Growth', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -742,7 +742,7 @@ test.describe('High Scores (localStorage)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
         await page.evaluate(() => localStorage.clear());
     });
@@ -844,7 +844,7 @@ test.describe('Pause/Resume', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -917,7 +917,7 @@ test.describe('UI Elements (SPEC Section 9)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -983,7 +983,7 @@ test.describe('Performance (SPEC Section 12)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -1032,7 +1032,7 @@ test.describe('Visual Requirements', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -1074,7 +1074,7 @@ test.describe('Restart Game', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
@@ -1150,7 +1150,7 @@ test.describe('Time Mode (SPEC Section 4)', () => {
 
     test.beforeEach(async () => {
         page = await browser.newPage();
-        await page.goto('file:///home/ubuntu/webgames-snake-v2/index.html');
+        await page.goto('http://localhost:5173');
         await page.waitForSelector('#menuOverlay:not(.hidden)', { timeout: 5000 });
     });
 
