@@ -300,19 +300,21 @@ export class Snake {
         head.position.copy(head.targetPosition);
         
         // Move body segments - each follows the one before (Trail Method)
-        for (let i = 1; i < this.segments.length; i++) {
+        // IMPORTANT: Process in REVERSE order so each segment follows the OLD position of the segment ahead
+        for (let i = this.segments.length - 1; i > 0; i--) {
             const current = this.segments[i];
             const target = this.segments[i - 1];
             
-            current.gridX = target.gridX;
-            current.gridZ = target.gridZ;
-            current.x = target.x;
-            current.z = target.z;
-            current.targetPosition.set(
-                target.x,
-                0.35,
-                target.z
-            );
+            // Store the OLD position of target before it moves
+            const targetOldX = this.prevPositions[i - 1]?.x ?? target.x;
+            const targetOldZ = this.prevPositions[i - 1]?.z ?? target.z;
+            
+            // Move current segment to where target was BEFORE it moved
+            current.x = targetOldX;
+            current.z = targetOldZ;
+            current.gridX = Math.round(targetOldX);
+            current.gridZ = Math.round(targetOldZ);
+            current.targetPosition.set(targetOldX, 0.35, targetOldZ);
             current.position.copy(current.targetPosition);
         }
         

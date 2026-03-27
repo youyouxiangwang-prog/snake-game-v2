@@ -182,8 +182,9 @@ export class InputSystem {
      * Queue a direction input
      */
     queueDirection(direction) {
-        // Prevent 180 degree turns using current snake direction
-        const currentDir = this.snake.getDirection();
+        // Prevent 180 degree turns using queued next direction
+        // Use nextDirection if set, otherwise use current direction
+        const currentDir = this.snake.nextDirection || this.snake.getDirection();
         
         const dirMap = {
             'UP': { x: 0, z: -1 },

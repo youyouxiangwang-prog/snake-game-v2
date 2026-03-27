@@ -381,7 +381,7 @@ body {
     bottom: 30px;
     left: 50%;
     transform: translateX(-50%);
-    display: none;
+    display: grid;
     grid-template-columns: repeat(3, 70px);
     grid-template-rows: repeat(2, 70px);
     gap: 8px;
