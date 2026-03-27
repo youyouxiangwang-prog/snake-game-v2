@@ -5,6 +5,7 @@
   - generic:
     - generic: 🎮 经典
     - generic: "分数: 0"
+    - generic: ⏱️ 60s
   - generic [ref=e4]:
     - button "⬆️" [ref=e5] [cursor=pointer]
     - button "⬅️" [ref=e6] [cursor=pointer]

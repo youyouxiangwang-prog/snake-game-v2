@@ -14,4 +14,9 @@
       - button "🎮 经典" [ref=e8] [cursor=pointer]
       - button "⏱️ 限时" [ref=e9] [cursor=pointer]
       - button "🧱 障碍" [ref=e10] [cursor=pointer]
+  - generic [ref=e13]:
+    - button "⬆️" [ref=e14] [cursor=pointer]
+    - button "⬅️" [ref=e15] [cursor=pointer]
+    - button "➡️" [ref=e16] [cursor=pointer]
+    - button "⬇️" [ref=e17] [cursor=pointer]
 ```

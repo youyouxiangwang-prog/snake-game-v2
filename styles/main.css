@@ -1,6 +1,27 @@
-/* Snake Game V3 - Lively Low-poly UI */
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
+/* Snake Game V3 - Neon Cyberpunk UI */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
 
+/* ============================
+   CSS Variables - Neon Theme
+   ============================ */
+:root {
+    --bg-dark: #0a0a1a;
+    --bg-grid: #0d0d24;
+    --grid-line: #1a1a3a;
+    --neon-green: #00ff88;
+    --neon-pink: #ff0066;
+    --neon-cyan: #00ffff;
+    --neon-yellow: #ffff00;
+    --neon-orange: #ff8c00;
+    --text-white: #ffffff;
+    --text-gray: #8888aa;
+    --glass-bg: rgba(10, 10, 30, 0.85);
+    --glass-border: rgba(0, 255, 255, 0.3);
+}
+
+/* ============================
+   Base Styles
+   ============================ */
 * {
     margin: 0;
     padding: 0;
@@ -8,11 +29,42 @@
 }
 
 body {
-    font-family: 'Rajdhani', 'Segoe UI', Tahoma, sans-serif;
-    background: linear-gradient(135deg, #0a2a0a 0%, #1a4a1a 50%, #0a3a0a 100%);
+    font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+    background: var(--bg-dark);
     min-height: 100vh;
     overflow: hidden;
-    color: white;
+    color: var(--text-white);
+}
+
+/* Animated grid background */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(var(--grid-line) 1px, transparent 1px);
+    background-size: 50px 50px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Radial glow overlay */
+body::after {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 150%;
+    height: 150%;
+    background: radial-gradient(ellipse at center, rgba(0, 255, 136, 0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
 }
 
 /* Canvas */
@@ -22,6 +74,7 @@ body {
     position: fixed;
     top: 0;
     left: 0;
+    z-index: 1;
 }
 
 #canvasContainer canvas {
@@ -29,9 +82,9 @@ body {
     height: 100%;
 }
 
-/* ============================================
-   HUD - Top Bar
-   ============================================ */
+/* ============================
+   HUD - Top Bar (Glass Style)
+   ============================ */
 #hud {
     position: fixed;
     top: 0;
@@ -40,8 +93,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 20px;
-    background: linear-gradient(180deg, rgba(0,20,0,0.9) 0%, rgba(0,20,0,0) 100%);
+    padding: 16px 24px;
+    background: linear-gradient(180deg, rgba(10, 10, 26, 0.95) 0%, rgba(10, 10, 26, 0) 100%);
     z-index: 10;
     pointer-events: none;
 }
@@ -49,30 +102,34 @@ body {
 .hud-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background: rgba(0, 30, 0, 0.8);
-    border: 2px solid rgba(255, 215, 0, 0.4);
-    border-radius: 25px;
-    backdrop-filter: blur(5px);
+    gap: 10px;
+    padding: 10px 20px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 30px;
+    backdrop-filter: blur(10px);
+    box-shadow: 
+        0 0 20px rgba(0, 255, 255, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .hud-icon {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
+    filter: drop-shadow(0 0 5px currentColor);
 }
 
 .hud-text {
-    font-size: 1.1rem;
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
 }
 
-/* Score - Gold animated */
+/* Score - Neon Green */
 #scoreDisplay {
-    color: #FFD700;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
-    transition: transform 0.1s ease;
+    color: var(--neon-green);
+    text-shadow: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green);
 }
 
 #scoreDisplay.pop {
@@ -81,337 +138,392 @@ body {
 
 @keyframes scorePop {
     0% { transform: scale(1); }
-    50% { transform: scale(1.3); color: #FF8C00; }
+    50% { transform: scale(1.3); text-shadow: 0 0 20px var(--neon-green), 0 0 40px var(--neon-green); }
     100% { transform: scale(1); }
 }
 
-/* Timer */
+/* Timer - Neon Cyan */
 #timeDisplay {
-    color: #88DDFF;
-    text-shadow: 0 0 10px rgba(136, 221, 255, 0.5);
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
 }
 
-/* Mode Display */
+/* Mode Display - Neon Yellow */
 #modeDisplay {
-    color: #00FF88;
-    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+    color: var(--neon-yellow);
+    text-shadow: 0 0 10px var(--neon-yellow), 0 0 20px var(--neon-yellow);
 }
 
-/* FPS Counter (debug) */
+/* FPS Counter */
 #fpsDisplay {
     position: fixed;
-    bottom: 10px;
-    left: 10px;
-    color: #88FF88;
-    font-size: 0.9rem;
-    background: rgba(0,0,0,0.5);
-    padding: 4px 8px;
-    border-radius: 4px;
+    bottom: 15px;
+    left: 15px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.8rem;
+    color: var(--neon-green);
+    background: var(--glass-bg);
+    padding: 6px 12px;
+    border-radius: 15px;
+    border: 1px solid rgba(0, 255, 136, 0.3);
     z-index: 20;
     pointer-events: none;
+    text-shadow: 0 0 5px var(--neon-green);
 }
 
-/* ============================================
-   Overlays - Menus
-   ============================================ */
+/* ============================
+   Overlays - Glass Morphism
+   ============================ */
 .overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 20, 0, 0.92);
+    background: radial-gradient(ellipse at center, rgba(10, 10, 30, 0.9) 0%, rgba(5, 5, 15, 0.98) 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     z-index: 100;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(5px);
 }
 
 .overlay.hidden {
     display: none;
 }
 
-/* ============================================
-   Title - Big & Bouncy
-   ============================================ */
+/* ============================
+   Title - Neon Glow Effect
+   ============================ */
 .game-title {
-    font-size: 4rem;
-    font-weight: 700;
-    color: #FFD700;
-    text-shadow: 
-        0 0 30px rgba(255, 215, 0, 0.8),
-        0 0 60px rgba(255, 140, 0, 0.6),
-        4px 4px 0 #AA6600;
-    margin-bottom: 40px;
-    animation: titleFloat 3s ease-in-out infinite;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 900;
+    color: var(--text-white);
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    margin-bottom: 50px;
+    position: relative;
+    animation: titleFloat 4s ease-in-out infinite;
     text-align: center;
 }
 
-@keyframes titleFloat {
-    0%, 100% { transform: translateY(0) rotate(-1deg); }
-    50% { transform: translateY(-10px) rotate(1deg); }
-}
-
-.game-title .emoji {
+.game-title .snake-emoji {
     display: inline-block;
-    animation: bounce 0.6s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px var(--neon-green));
 }
 
-.game-title .emoji:last-child {
-    animation-delay: 0.3s;
+.game-title::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120%;
+    height: 200%;
+    background: radial-gradient(ellipse at center, rgba(0, 255, 136, 0.1) 0%, transparent 70%);
+    z-index: -1;
+    animation: titleGlow 3s ease-in-out infinite alternate;
 }
 
-@keyframes bounce {
+@keyframes titleFloat {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-8px); }
 }
 
-/* ============================================
-   Buttons - Low Poly Style
-   ============================================ */
+@keyframes titleGlow {
+    from { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+    to { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+}
+
+/* Neon underline effect */
+.game-title .subtitle {
+    display: block;
+    font-size: 0.35em;
+    font-weight: 400;
+    letter-spacing: 12px;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+    margin-top: 10px;
+}
+
+/* ============================
+   Buttons - Cyberpunk Style
+   ============================ */
 .menu-buttons {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    margin-bottom: 30px;
+    margin-bottom: 40px;
 }
 
 .menu-btn {
     position: relative;
     width: 280px;
-    padding: 16px 32px;
+    padding: 18px 36px;
     border: none;
-    border-radius: 14px;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 1.4rem;
+    border-radius: 4px;
+    font-family: 'Orbitron', monospace;
+    font-size: 1.1rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     cursor: pointer;
-    transition: all 0.15s ease;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    transition: all 0.2s ease;
+    text-shadow: 0 0 10px currentColor;
+    overflow: hidden;
 }
 
-/* Primary button - Gold */
+/* Button glow effect */
+.menu-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.menu-btn:hover::before {
+    left: 100%;
+}
+
+/* Primary - Neon Green */
 .menu-btn.primary {
-    background: linear-gradient(180deg, #FFD700 0%, #FF8C00 100%);
-    color: #1a1a00;
-    border: 3px solid #CC8800;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 200, 100, 0.1) 100%);
+    color: var(--neon-green);
+    border: 2px solid var(--neon-green);
     box-shadow: 
-        0 6px 0 #AA5500,
-        0 10px 20px rgba(0,0,0,0.4),
-        inset 0 2px 0 rgba(255,255,255,0.4);
+        0 0 20px rgba(0, 255, 136, 0.3),
+        inset 0 0 20px rgba(0, 255, 136, 0.1);
 }
 
 .menu-btn.primary:hover {
-    transform: translateY(-3px);
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.4) 0%, rgba(0, 200, 100, 0.2) 100%);
     box-shadow: 
-        0 9px 0 #AA5500,
-        0 15px 30px rgba(0,0,0,0.5),
-        inset 0 2px 0 rgba(255,255,255,0.4);
+        0 0 30px rgba(0, 255, 136, 0.5),
+        0 0 60px rgba(0, 255, 136, 0.3),
+        inset 0 0 30px rgba(0, 255, 136, 0.2);
+    transform: translateY(-3px) scale(1.02);
 }
 
 .menu-btn.primary:active {
-    transform: translateY(4px);
-    box-shadow: 
-        0 2px 0 #AA5500,
-        0 4px 10px rgba(0,0,0,0.3),
-        inset 0 2px 0 rgba(255,255,255,0.4);
+    transform: translateY(1px) scale(0.98);
 }
 
-/* Secondary button - Green */
+/* Secondary - Neon Cyan */
 .menu-btn.secondary {
-    background: linear-gradient(180deg, #44DD44 0%, #22AA22 100%);
-    color: #FFFFFF;
-    border: 3px solid #118811;
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.15) 0%, rgba(0, 200, 200, 0.1) 100%);
+    color: var(--neon-cyan);
+    border: 2px solid var(--neon-cyan);
     box-shadow: 
-        0 6px 0 #116611,
-        0 10px 20px rgba(0,0,0,0.4),
-        inset 0 2px 0 rgba(255,255,255,0.3);
+        0 0 15px rgba(0, 255, 255, 0.2),
+        inset 0 0 15px rgba(0, 255, 255, 0.1);
 }
 
 .menu-btn.secondary:hover {
-    transform: translateY(-3px);
+    background: linear-gradient(135deg, rgba(0, 255, 255, 0.3) 0%, rgba(0, 200, 200, 0.15) 100%);
     box-shadow: 
-        0 9px 0 #116611,
-        0 15px 30px rgba(0,0,0,0.5),
-        inset 0 2px 0 rgba(255,255,255,0.3);
+        0 0 25px rgba(0, 255, 255, 0.4),
+        0 0 50px rgba(0, 255, 255, 0.2),
+        inset 0 0 25px rgba(0, 255, 255, 0.15);
+    transform: translateY(-3px) scale(1.02);
 }
 
 .menu-btn.secondary:active {
-    transform: translateY(4px);
-    box-shadow: 
-        0 2px 0 #116611,
-        0 4px 10px rgba(0,0,0,0.3),
-        inset 0 2px 0 rgba(255,255,255,0.3);
+    transform: translateY(1px) scale(0.98);
 }
 
-/* Danger button - Red */
-.menu-btn.danger {
-    background: linear-gradient(180deg, #FF6666 0%, #DD3333 100%);
-    color: #FFFFFF;
-    border: 3px solid #BB2222;
-    box-shadow: 
-        0 6px 0 #991111,
-        0 10px 20px rgba(0,0,0,0.4),
-        inset 0 2px 0 rgba(255,255,255,0.3);
-}
-
-/* ============================================
-   Mode Selector
-   ============================================ */
+/* ============================
+   Mode Selector - Tab Style
+   ============================ */
 .mode-selector {
     display: flex;
-    gap: 12px;
+    gap: 8px;
+    padding: 6px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
 }
 
 .mode-btn {
     position: relative;
-    padding: 12px 20px;
+    padding: 14px 24px;
     border: none;
-    border-radius: 20px;
-    font-family: 'Rajdhani', sans-serif;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.15s ease;
-    background: rgba(50, 50, 50, 0.8);
-    color: #AAAAAA;
-    border: 2px solid #555555;
+    transition: all 0.2s ease;
+    background: transparent;
+    color: var(--text-gray);
+    letter-spacing: 1px;
 }
 
 .mode-btn .mode-icon {
     display: block;
-    font-size: 1.5rem;
-    margin-bottom: 4px;
+    font-size: 1.4rem;
+    margin-bottom: 6px;
+    transition: transform 0.2s ease;
 }
 
 .mode-btn:hover {
-    transform: translateY(-2px);
-    background: rgba(70, 70, 70, 0.9);
+    color: var(--text-white);
+}
+
+.mode-btn:hover .mode-icon {
+    transform: scale(1.1);
 }
 
 .mode-btn.active {
-    background: linear-gradient(180deg, #FF6644 0%, #DD4422 100%);
-    color: #FFFFFF;
-    border-color: #BB3311;
+    background: linear-gradient(135deg, rgba(255, 0, 102, 0.3) 0%, rgba(200, 0, 80, 0.2) 100%);
+    color: var(--neon-pink);
     box-shadow: 
-        0 4px 0 #991100,
-        0 6px 15px rgba(255, 68, 34, 0.4);
-    transform: translateY(-2px);
+        0 0 20px rgba(255, 0, 102, 0.4),
+        inset 0 0 15px rgba(255, 0, 102, 0.2);
 }
 
 .mode-btn.active .mode-icon {
-    animation: pulse 1s ease-in-out infinite;
+    animation: modePulse 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px var(--neon-pink));
 }
 
-@keyframes pulse {
+@keyframes modePulse {
     0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+    50% { transform: scale(1.15); }
 }
 
-/* ============================================
+/* ============================
    Game Over Screen
-   ============================================ */
+   ============================ */
 .gameover-title {
-    font-size: 3.5rem;
-    font-weight: 700;
-    color: #FF4444;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 900;
+    color: var(--neon-pink);
+    text-transform: uppercase;
+    letter-spacing: 6px;
+    margin-bottom: 25px;
     text-shadow: 
-        0 0 30px rgba(255, 0, 0, 0.8),
-        4px 4px 0 #880000;
-    margin-bottom: 20px;
-    animation: shake 0.5s ease-in-out;
+        0 0 10px var(--neon-pink),
+        0 0 20px var(--neon-pink),
+        0 0 40px var(--neon-pink);
+    animation: gameoverFlicker 2s ease-in-out infinite;
 }
 
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-10px); }
-    75% { transform: translateX(10px); }
+@keyframes gameoverFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+    52% { opacity: 1; }
+    54% { opacity: 0.7; }
+    56% { opacity: 1; }
 }
 
 .final-score {
-    font-size: 2.2rem;
-    color: #FFFFFF;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.8rem;
+    color: var(--text-white);
     margin-bottom: 15px;
+    letter-spacing: 2px;
 }
 
 .final-score span {
-    color: #FFD700;
-    text-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+    font-family: 'Orbitron', monospace;
+    font-size: 2.5rem;
+    color: var(--neon-yellow);
+    text-shadow: 0 0 15px var(--neon-yellow), 0 0 30px var(--neon-yellow);
+    margin-left: 10px;
 }
 
 .new-record {
-    font-size: 1.8rem;
-    color: #FFDD00;
-    text-shadow: 0 0 20px #FFAA00;
-    margin-bottom: 25px;
-    animation: newRecordPulse 0.5s ease-in-out infinite alternate;
+    font-family: 'Orbitron', monospace;
+    font-size: 1.4rem;
+    color: var(--neon-green);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    margin-bottom: 30px;
+    animation: newRecordFlash 0.5s ease-in-out infinite alternate;
+    text-shadow: 0 0 10px var(--neon-green), 0 0 20px var(--neon-green);
 }
 
-@keyframes newRecordPulse {
-    from { transform: scale(1); opacity: 0.8; }
-    to { transform: scale(1.1); opacity: 1; }
+@keyframes newRecordFlash {
+    from { opacity: 0.7; transform: scale(1); }
+    to { opacity: 1; transform: scale(1.05); }
 }
 
 .new-record.hidden {
     display: none;
 }
 
-/* ============================================
+/* ============================
    Pause Screen
-   ============================================ */
+   ============================ */
 .pause-title {
-    font-size: 3.5rem;
-    font-weight: 700;
-    color: #88DDFF;
-    text-shadow: 
-        0 0 30px rgba(136, 221, 255, 0.8),
-        4px 4px 0 #4488AA;
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    font-weight: 900;
+    color: var(--neon-cyan);
+    text-transform: uppercase;
+    letter-spacing: 6px;
     margin-bottom: 30px;
+    text-shadow: 
+        0 0 10px var(--neon-cyan),
+        0 0 20px var(--neon-cyan),
+        0 0 40px var(--neon-cyan);
 }
 
-/* ============================================
-   Mobile Controls
-   ============================================ */
+/* ============================
+   Mobile Controls - Futuristic
+   ============================ */
 #mobileControls {
     position: fixed;
-    bottom: 30px;
+    bottom: 25px;
     left: 50%;
     transform: translateX(-50%);
     display: grid;
-    grid-template-columns: repeat(3, 70px);
-    grid-template-rows: repeat(2, 70px);
-    gap: 8px;
+    grid-template-columns: repeat(3, 65px);
+    grid-template-rows: repeat(2, 65px);
+    gap: 10px;
     z-index: 10;
+    padding: 15px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
 }
 
 .ctrl-btn {
-    width: 70px;
-    height: 70px;
-    border: none;
+    width: 65px;
+    height: 65px;
+    border: 2px solid var(--neon-green);
     border-radius: 50%;
-    background: linear-gradient(180deg, rgba(255,215,0,0.9) 0%, rgba(255,140,0,0.9) 100%);
-    font-size: 2rem;
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 200, 100, 0.1) 100%);
+    font-size: 1.8rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.15s ease;
     box-shadow: 
-        0 4px 0 #AA5500,
-        0 6px 15px rgba(0,0,0,0.4);
-    transition: all 0.1s ease;
+        0 0 15px rgba(0, 255, 136, 0.3),
+        inset 0 0 10px rgba(0, 255, 136, 0.1);
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
 
 .ctrl-btn:active {
-    transform: translateY(3px);
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.5) 0%, rgba(0, 200, 100, 0.3) 100%);
     box-shadow: 
-        0 1px 0 #AA5500,
-        0 2px 5px rgba(0,0,0,0.3);
+        0 0 25px rgba(0, 255, 136, 0.6),
+        0 0 50px rgba(0, 255, 136, 0.3),
+        inset 0 0 20px rgba(0, 255, 136, 0.3);
+    transform: scale(0.95);
 }
 
 .ctrl-btn[data-dir="up"] { 
@@ -434,59 +546,89 @@ body {
     grid-row: 2; 
 }
 
-/* ============================================
-   Responsive
-   ============================================ */
-@media (max-width: 768px) {
-    #mobileControls {
-        display: grid;
-    }
-    
-    .game-title {
-        font-size: 2.5rem;
-    }
-    
-    .gameover-title, .pause-title {
-        font-size: 2.5rem;
-    }
-    
-    .menu-btn {
-        width: 240px;
-        padding: 14px 24px;
-        font-size: 1.2rem;
-    }
-    
-    .mode-btn {
-        padding: 10px 16px;
-        font-size: 0.9rem;
-    }
-    
-    #hud {
-        padding: 8px 12px;
-    }
-    
-    .hud-item {
-        padding: 6px 12px;
-    }
-    
-    .hud-text {
-        font-size: 0.95rem;
-    }
+/* ============================
+   High Score Modal
+   ============================ */
+.highscore-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(5, 5, 15, 0.95);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    backdrop-filter: blur(10px);
 }
 
-/* ============================================
+.highscore-overlay.hidden {
+    display: none;
+}
+
+.highscore-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 2rem;
+    color: var(--neon-yellow);
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    margin-bottom: 30px;
+    text-shadow: 0 0 15px var(--neon-yellow), 0 0 30px var(--neon-yellow);
+}
+
+.highscore-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 30px 0;
+    width: 300px;
+}
+
+.highscore-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    margin-bottom: 8px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1.2rem;
+}
+
+.highscore-item .rank {
+    color: var(--neon-cyan);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--neon-cyan);
+}
+
+.highscore-item .mode {
+    color: var(--text-gray);
+    font-size: 0.9rem;
+}
+
+.highscore-item .score {
+    font-family: 'Orbitron', monospace;
+    color: var(--neon-green);
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--neon-green);
+}
+
+/* ============================
    Animations
-   ============================================ */
+   ============================ */
 .fade-in {
-    animation: fadeIn 0.3s ease-out;
+    animation: fadeIn 0.4s ease-out;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Screen shake effect class */
+/* Screen shake */
 .screen-shake {
     animation: screenShake 0.3s ease-out;
 }
@@ -497,4 +639,109 @@ body {
     40% { transform: translate(5px, -3px); }
     60% { transform: translate(-3px, 5px); }
     80% { transform: translate(3px, -5px); }
+}
+
+/* Scanline effect for retro feel */
+.scanlines {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.1) 0px,
+        rgba(0, 0, 0, 0.1) 1px,
+        transparent 1px,
+        transparent 2px
+    );
+    opacity: 0.3;
+}
+
+/* ============================
+   Responsive Design
+   ============================ */
+@media (max-width: 768px) {
+    #mobileControls {
+        bottom: 20px;
+        grid-template-columns: repeat(3, 60px);
+        grid-template-rows: repeat(2, 60px);
+        gap: 8px;
+        padding: 12px;
+    }
+    
+    .ctrl-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .menu-btn {
+        width: 250px;
+        padding: 15px 28px;
+        font-size: 1rem;
+    }
+    
+    .mode-btn {
+        padding: 10px 16px;
+        font-size: 0.75rem;
+    }
+    
+    .mode-btn .mode-icon {
+        font-size: 1.2rem;
+    }
+    
+    #hud {
+        padding: 12px 16px;
+    }
+    
+    .hud-item {
+        padding: 8px 14px;
+    }
+    
+    .hud-text {
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+    
+    .game-title {
+        letter-spacing: 4px;
+        margin-bottom: 35px;
+    }
+    
+    .game-title .subtitle {
+        letter-spacing: 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    #mobileControls {
+        grid-template-columns: repeat(3, 55px);
+        grid-template-rows: repeat(2, 55px);
+        gap: 6px;
+        padding: 10px;
+    }
+    
+    .ctrl-btn {
+        width: 55px;
+        height: 55px;
+        font-size: 1.3rem;
+    }
+    
+    .menu-btn {
+        width: 220px;
+        padding: 13px 24px;
+        font-size: 0.9rem;
+    }
+    
+    .mode-selector {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .mode-btn {
+        width: 100%;
+    }
 }

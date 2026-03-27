@@ -4,45 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>贪食蛇 3D 🐍</title>
-  <script type="module" crossorigin src="/assets/index-CnNsDlW7.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-DGOao2uf.css">
+  <script type="module" crossorigin src="/assets/index-7GRyVwok.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-B1_1LQEQ.css">
 </head>
 <body>
-    <!-- HUD - SPEC Section 3.3 -->
+    <!-- Scanline Effect -->
+    <div class="scanlines"></div>
+    
+    <!-- HUD - Top Bar -->
     <div id="hud" class="game-hud">
-        <div class="hud-left">
-            <span id="modeDisplay">🎮 经典</span>
+        <div class="hud-item hud-left">
+            <span class="hud-icon">🎮</span>
+            <span id="modeDisplay" class="hud-text">经典</span>
         </div>
-        <div class="hud-center">
-            <span id="scoreDisplay">分数: 0</span>
+        <div class="hud-item hud-center">
+            <span class="hud-icon">⭐</span>
+            <span id="scoreDisplay" class="hud-text">0</span>
         </div>
-        <div class="hud-right">
-            <span id="timeDisplay"></span>
+        <div class="hud-item hud-right">
+            <span class="hud-icon">⏱️</span>
+            <span id="timeDisplay" class="hud-text"></span>
         </div>
     </div>
     
-    <!-- Menu Overlay - SPEC Section 3.6 -->
+    <!-- Menu Overlay -->
     <div id="menuOverlay" class="overlay">
-        <h1 class="game-title">🐍 贪食蛇 3D 🐍</h1>
+        <h1 class="game-title">
+            <span class="snake-emoji">🐍</span>
+            贪食蛇 3D
+            <span class="snake-emoji">🐍</span>
+            <span class="subtitle">SNAKE 3D</span>
+        </h1>
         <div class="menu-buttons">
-            <button class="menu-btn primary" onclick="window.game && window.game.startGame()">▶ 开始游戏</button>
-            <button class="menu-btn secondary" onclick="window.game && window.game.showHighScores()">🏆 最高分</button>
+            <button class="menu-btn primary" onclick="window.game && window.game.startGame()">
+                ▶ 开始游戏
+            </button>
+            <button class="menu-btn secondary" onclick="window.game && window.game.showHighScores()">
+                🏆 最高分
+            </button>
         </div>
         <div class="mode-selector">
-            <button class="mode-btn active" data-mode="CLASSIC" onclick="selectMode('CLASSIC')">🎮 经典</button>
-            <button class="mode-btn" data-mode="TIME" onclick="selectMode('TIME')">⏱️ 限时</button>
-            <button class="mode-btn" data-mode="OBSTACLE" onclick="selectMode('OBSTACLE')">🧱 障碍</button>
+            <button class="mode-btn active" data-mode="CLASSIC" onclick="selectMode('CLASSIC')">
+                <span class="mode-icon">🎮</span>
+                经典
+            </button>
+            <button class="mode-btn" data-mode="TIME" onclick="selectMode('TIME')">
+                <span class="mode-icon">⏱️</span>
+                限时
+            </button>
+            <button class="mode-btn" data-mode="OBSTACLE" onclick="selectMode('OBSTACLE')">
+                <span class="mode-icon">🧱</span>
+                障碍
+            </button>
         </div>
     </div>
     
     <!-- Game Over Overlay -->
     <div id="gameOverOverlay" class="overlay hidden">
         <h1 class="gameover-title">💀 游戏结束 💀</h1>
-        <p class="final-score">得分: <span id="finalScore">0</span></p>
+        <p class="final-score">最终得分<span id="finalScore">0</span></p>
         <p id="newRecord" class="new-record hidden">🎉 新纪录！🎉</p>
         <div class="menu-buttons">
-            <button class="menu-btn primary" onclick="window.game && window.game.startGame()">🔄 再来一局</button>
-            <button class="menu-btn secondary" onclick="window.game && window.game.returnToMenu()">📜 返回菜单</button>
+            <button class="menu-btn primary" onclick="window.game && window.game.startGame()">
+                🔄 再来一局
+            </button>
+            <button class="menu-btn secondary" onclick="window.game && window.game.returnToMenu()">
+                📜 返回菜单
+            </button>
         </div>
     </div>
     
@@ -50,20 +78,33 @@
     <div id="pauseOverlay" class="overlay hidden">
         <h1 class="pause-title">⏸️ 暂停</h1>
         <div class="menu-buttons">
-            <button class="menu-btn primary" onclick="window.game && window.game.resume()">▶ 继续</button>
-            <button class="menu-btn secondary" onclick="window.game && window.game.returnToMenu()">📜 返回菜单</button>
+            <button class="menu-btn primary" onclick="window.game && window.game.resume()">
+                ▶ 继续
+            </button>
+            <button class="menu-btn secondary" onclick="window.game && window.game.returnToMenu()">
+                📜 返回菜单
+            </button>
         </div>
+    </div>
+    
+    <!-- High Score Overlay -->
+    <div id="highScoreOverlay" class="highscore-overlay hidden">
+        <h2 class="highscore-title">🏆 最高分 🏆</h2>
+        <ul id="highScoreList" class="highscore-list"></ul>
+        <button class="menu-btn secondary" onclick="window.game && window.game.closeHighScores()">
+            ✕ 关闭
+        </button>
     </div>
     
     <!-- Canvas Container -->
     <div id="canvasContainer"></div>
     
-    <!-- Mobile Controls - SPEC Section 3.4 -->
+    <!-- Mobile Controls -->
     <div id="mobileControls">
-        <button class="ctrl-btn" data-dir="up">⬆️</button>
-        <button class="ctrl-btn" data-dir="left">⬅️</button>
-        <button class="ctrl-btn" data-dir="right">➡️</button>
-        <button class="ctrl-btn" data-dir="down">⬇️</button>
+        <button class="ctrl-btn" data-dir="up">▲</button>
+        <button class="ctrl-btn" data-dir="left">◀</button>
+        <button class="ctrl-btn" data-dir="right">▶</button>
+        <button class="ctrl-btn" data-dir="down">▼</button>
     </div>
     
     <!-- Main Script -->
