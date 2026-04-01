@@ -1,4 +1,4 @@
-// Snake Game V3 - Three.js Scene Manager (Optimized)
+// Snake Game V3 - Three.js Scene Manager (PBR Upgrade)
 import * as THREE from 'three';
 
 export class Scene {
@@ -6,9 +6,14 @@ export class Scene {
         this.containerId = containerId;
         this.container = document.getElementById(containerId);
         
-        // Arena config - matches COLLISION_CONFIG bounds: -48 to 48
+        // Arena config
         this.arenaSize = 48;
-        this.wallHeight = 2;
+        this.wallHeight = 2.5;
+        
+        // Camera shake state
+        this.shakeIntensity = 0;
+        this.shakeDecay = 0.92;
+        this.shakeOffset = { x: 0, y: 0, z: 0 };
         
         // Create scene
         this.scene = new THREE.Scene();
@@ -24,21 +29,24 @@ export class Scene {
         this.camera.position.set(0, 20, 20);
         this.camera.lookAt(0, 0, 0);
         
-        // Camera config - optimized lerp
+        // Camera config
         this.cameraOffset = { x: 0, y: 20, z: 20 };
         this.lookAhead = 5;
-        this.lerpFactor = 0.05; // Reduced for smoother camera
+        this.lerpFactor = 0.05;
         
-        // Renderer - optimized
+        // Renderer - PBR capable
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: false,
             powerPreference: 'high-performance'
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Reduced for performance
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.BasicShadowMap; // Fastest shadow
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.2;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.container.appendChild(this.renderer.domElement);
         
         // Lighting
@@ -50,8 +58,11 @@ export class Scene {
         // Boundary walls
         this.createBoundaryWalls();
         
-        // Fog (for depth)
-        this.scene.fog = new THREE.Fog(0x0f172a, 40, 80);
+        // Arena boundary glow lines
+        this.createBoundaryGlow();
+        
+        // Fog (exponential for depth)
+        this.scene.fog = new THREE.FogExp2(0x0f172a, 0.012);
         
         // FPS tracking
         this.lastTime = performance.now();
@@ -62,16 +73,20 @@ export class Scene {
     }
     
     setupLighting() {
-        // Ambient light
-        const ambient = new THREE.AmbientLight(0x608060, 0.8);
+        // Ambient - warm and subtle
+        const ambient = new THREE.AmbientLight(0x404060, 0.5);
         this.scene.add(ambient);
         
-        // Main directional light (sun)
-        this.sunLight = new THREE.DirectionalLight(0xFFFFCC, 1.2);
-        this.sunLight.position.set(15, 30, 15);
+        // Hemisphere light for natural sky/ground color bleeding
+        const hemi = new THREE.HemisphereLight(0x87ceeb, 0x2d5a27, 0.3);
+        this.scene.add(hemi);
+        
+        // Main directional light (sun) - warm white
+        this.sunLight = new THREE.DirectionalLight(0xFFEDD0, 1.8);
+        this.sunLight.position.set(20, 40, 20);
         this.sunLight.castShadow = true;
         
-        // Optimized shadow - reduced from 2048 to 1024
+        // Shadow map - soft shadows
         this.sunLight.shadow.mapSize.width = 1024;
         this.sunLight.shadow.mapSize.height = 1024;
         this.sunLight.shadow.camera.near = 1;
@@ -80,77 +95,79 @@ export class Scene {
         this.sunLight.shadow.camera.right = 60;
         this.sunLight.shadow.camera.top = 60;
         this.sunLight.shadow.camera.bottom = -60;
+        this.sunLight.shadow.bias = -0.001;
+        this.sunLight.shadow.radius = 4; // Soft shadow blur
         this.scene.add(this.sunLight);
         
-        // Fill light (softer, from below)
-        const fillLight = new THREE.DirectionalLight(0x88AA88, 0.4);
-        fillLight.position.set(-10, 5, -10);
+        // Add a target for the sun light
+        this.sunLight.target.position.set(0, 0, 0);
+        this.scene.add(this.sunLight.target);
+        
+        // Fill light - cool blue from opposite side
+        const fillLight = new THREE.DirectionalLight(0x6080FF, 0.35);
+        fillLight.position.set(-20, 15, -20);
         this.scene.add(fillLight);
+        
+        // Rim light - subtle backlight for depth
+        const rimLight = new THREE.DirectionalLight(0x88ffaa, 0.2);
+        rimLight.position.set(0, 10, -30);
+        this.scene.add(rimLight);
     }
     
     createGround() {
-        // Ground geometry - 100x100 per WORLD_CONFIG.size
         const groundSize = 100;
         
-        // Ground geometry - arena floor
-        const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 30, 30);
+        // Ground geometry with vertex noise for terrain
+        const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize, 80, 80);
         
-        // Slight height variation for low-poly effect
+        // Apply height variation for organic ground
         const positions = groundGeo.attributes.position;
         for (let i = 0; i < positions.count; i++) {
             const x = positions.getX(i);
             const y = positions.getY(i);
-            // Keep center flat, edges slightly bumpy
+            // Keep center relatively flat (arena), edges more bumpy
             const distFromCenter = Math.sqrt(x*x + y*y) / (groundSize / 2);
-            positions.setZ(i, Math.sin(x * 0.3) * Math.cos(y * 0.3) * 0.1 * Math.min(1, distFromCenter));
+            const flatZone = Math.max(0, 1 - distFromCenter * 1.5);
+            const bump = (Math.sin(x * 0.5) * Math.cos(y * 0.5) * 0.25 +
+                         Math.sin(x * 1.2 + y * 0.8) * 0.12) * (1 - flatZone);
+            positions.setZ(i, bump);
         }
         groundGeo.computeVertexNormals();
         
-        // Ground material - SPEC GROUND_CONFIG color 0x228822
-        const groundMat = new THREE.MeshLambertMaterial({
-            color: 0x228822,
-            flatShading: true
+        // Ground material - PBR
+        const groundMat = new THREE.MeshStandardMaterial({
+            color: 0x1a6b2a,
+            roughness: 0.95,
+            metalness: 0.0,
+            flatShading: false
         });
         
         this.ground = new THREE.Mesh(groundGeo, groundMat);
         this.ground.rotation.x = -Math.PI / 2;
-        this.ground.position.y = -0.1;
+        this.ground.position.y = -0.15;
         this.ground.receiveShadow = true;
         this.scene.add(this.ground);
         
-        // Create grid lines using LineSegments
+        // Create subtle grid lines
         this.createGridLines(groundSize);
-        
-        // Arena boundary marker (subtle ring)
-        const ringGeo = new THREE.RingGeometry(this.arenaSize - 0.5, this.arenaSize, 4);
-        const ringMat = new THREE.MeshBasicMaterial({
-            color: 0x114411,
-            side: THREE.DoubleSide
-        });
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.y = 0.01;
-        this.scene.add(ring);
     }
     
     createGridLines(size) {
-        // Grid with 1-unit cells, dark green lines on ground
-        const gridMat = new THREE.LineBasicMaterial({ 
+        const gridMat = new THREE.LineBasicMaterial({
             color: 0x1a4a1a,
             transparent: true,
-            opacity: 0.4
+            opacity: 0.25
         });
         
         const points = [];
         const half = size / 2;
+        const step = 2; // 2-unit grid
         
-        // Create grid lines from -50 to 50 (100x100 grid)
-        for (let i = -50; i <= 50; i++) {
-            // Lines along X axis (varying Z)
+        for (let i = -half; i <= half; i += step) {
+            // Lines along X
             points.push(new THREE.Vector3(-half, 0, i));
             points.push(new THREE.Vector3(half, 0, i));
-            
-            // Lines along Z axis (varying X)
+            // Lines along Z
             points.push(new THREE.Vector3(i, 0, -half));
             points.push(new THREE.Vector3(i, 0, half));
         }
@@ -164,27 +181,34 @@ export class Scene {
     createBoundaryWalls() {
         const size = this.arenaSize;
         const height = this.wallHeight;
-        const thickness = 0.8;
+        const thickness = 0.6;
         
-        // Wall material - low-poly green
-        const wallMat = new THREE.MeshLambertMaterial({
-            color: 0x1a551a,
-            flatShading: true
+        // Glass-like wall material
+        const wallMat = new THREE.MeshPhysicalMaterial({
+            color: 0x0a3d1a,
+            metalness: 0.0,
+            roughness: 0.15,
+            transmission: 0.5,
+            thickness: 0.8,
+            transparent: true,
+            opacity: 0.7
         });
         
-        // Top highlight
-        const topMat = new THREE.MeshLambertMaterial({
-            color: 0x2a772a,
-            flatShading: true
+        // Wall top cap - glowing
+        const capMat = new THREE.MeshStandardMaterial({
+            color: 0x22ff88,
+            emissive: 0x22ff88,
+            emissiveIntensity: 0.4,
+            metalness: 0.3,
+            roughness: 0.4
         });
         
-        // Create four walls
+        // Four walls
         const wallConfigs = [
-            // [width, height, depth, x, y, z]
-            [size * 2, height, thickness, 0, height/2, -size],    // North
-            [size * 2, height, thickness, 0, height/2, size],    // South
-            [thickness, height, size * 2, -size, height/2, 0],  // West
-            [thickness, height, size * 2, size, height/2, 0],  // East
+            [size * 2, height, thickness, 0, height/2, -size],
+            [size * 2, height, thickness, 0, height/2, size],
+            [thickness, height, size * 2, -size, height/2, 0],
+            [thickness, height, size * 2, size, height/2, 0]
         ];
         
         wallConfigs.forEach(([w, h, d, x, y, z]) => {
@@ -195,42 +219,99 @@ export class Scene {
             wall.receiveShadow = true;
             this.scene.add(wall);
             
-            // Add top cap for 3D effect
-            const capGeo = new THREE.BoxGeometry(w, 0.2, d);
-            const cap = new THREE.Mesh(capGeo, topMat);
+            // Glowing top cap
+            const capGeo = new THREE.BoxGeometry(w, 0.15, d);
+            const cap = new THREE.Mesh(capGeo, capMat);
             cap.position.set(x, h, z);
             this.scene.add(cap);
         });
         
-        // Corner decorations (small pillars)
+        // Corner pillars
         const corners = [
             [-size, -size], [-size, size], [size, -size], [size, size]
         ];
         
         corners.forEach(([x, z]) => {
-            const pillarGeo = new THREE.CylinderGeometry(0.4, 0.5, height + 0.5, 6);
+            const pillarGeo = new THREE.CylinderGeometry(0.5, 0.6, height + 0.5, 8);
             const pillar = new THREE.Mesh(pillarGeo, wallMat);
             pillar.position.set(x, (height + 0.5) / 2, z);
             pillar.castShadow = true;
             this.scene.add(pillar);
             
-            // Pillar cap
-            const capGeo = new THREE.CylinderGeometry(0.5, 0.4, 0.3, 6);
-            const cap = new THREE.Mesh(capGeo, topMat);
+            // Pillar glowing cap
+            const capGeo = new THREE.CylinderGeometry(0.6, 0.5, 0.25, 8);
+            const cap = new THREE.Mesh(capGeo, capMat);
             cap.position.set(x, height + 0.6, z);
             this.scene.add(cap);
         });
     }
     
-    updateCamera(targetPos, direction) {
-        // Target camera position
-        const targetX = targetPos.x + this.cameraOffset.x;
-        const targetZ = targetPos.z + this.cameraOffset.z;
+    createBoundaryGlow() {
+        // Glowing arena boundary ring
+        const segments = 128;
+        const radius = this.arenaSize - 0.5;
         
-        // Smooth interpolation with reduced factor
+        const points = [];
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            points.push(new THREE.Vector3(
+                Math.cos(angle) * radius,
+                0.05,
+                Math.sin(angle) * radius
+            ));
+        }
+        
+        const ringGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const ringMat = new THREE.LineBasicMaterial({
+            color: 0x22ff88,
+            transparent: true,
+            opacity: 0.6
+        });
+        const ring = new THREE.Line(ringGeo, ringMat);
+        this.scene.add(ring);
+        
+        // Outer faint ring
+        const outerPoints = [];
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            outerPoints.push(new THREE.Vector3(
+                Math.cos(angle) * (radius + 1.5),
+                0.05,
+                Math.sin(angle) * (radius + 1.5)
+            ));
+        }
+        const outerRingGeo = new THREE.BufferGeometry().setFromPoints(outerPoints);
+        const outerRingMat = new THREE.LineBasicMaterial({
+            color: 0x22ff88,
+            transparent: true,
+            opacity: 0.2
+        });
+        const outerRing = new THREE.Line(outerRingGeo, outerRingMat);
+        this.scene.add(outerRing);
+    }
+    
+    updateCamera(targetPos, direction) {
+        // Apply shake decay
+        if (this.shakeIntensity > 0.01) {
+            this.shakeOffset.x = (Math.random() - 0.5) * this.shakeIntensity;
+            this.shakeOffset.y = (Math.random() - 0.5) * this.shakeIntensity * 0.5;
+            this.shakeOffset.z = (Math.random() - 0.5) * this.shakeIntensity;
+            this.shakeIntensity *= this.shakeDecay;
+        } else {
+            this.shakeOffset.x = 0;
+            this.shakeOffset.y = 0;
+            this.shakeOffset.z = 0;
+        }
+        
+        // Target camera position
+        const targetX = targetPos.x + this.cameraOffset.x + this.shakeOffset.x;
+        const targetZ = targetPos.z + this.cameraOffset.z + this.shakeOffset.z;
+        const targetY = this.cameraOffset.y + this.shakeOffset.y;
+        
+        // Smooth interpolation
         this.camera.position.x += (targetX - this.camera.position.x) * this.lerpFactor;
         this.camera.position.z += (targetZ - this.camera.position.z) * this.lerpFactor;
-        this.camera.position.y = this.cameraOffset.y;
+        this.camera.position.y = targetY;
         
         // Look at point ahead of snake
         const lookAtX = targetPos.x + direction.x * this.lookAhead;
@@ -245,6 +326,10 @@ export class Scene {
             this.camera.position.z + 15
         );
         this.sunLight.target.position.set(targetPos.x, 0, targetPos.z);
+    }
+    
+    triggerShake(intensity = 0.4) {
+        this.shakeIntensity = intensity;
     }
     
     onResize() {
@@ -265,6 +350,10 @@ export class Scene {
     
     getScene() {
         return this.scene;
+    }
+    
+    getCamera() {
+        return this.camera;
     }
     
     getFPS() {

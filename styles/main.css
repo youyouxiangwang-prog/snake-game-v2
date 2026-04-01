@@ -942,3 +942,169 @@ body {
         width: 290px;
     }
 }
+
+/* ============================================================
+   Stage 4: UI Polish Animations
+   ============================================================ */
+
+/* Button Spring Press Effect */
+@keyframes buttonSpring {
+    0% { transform: scale(1) translateY(0); }
+    20% { transform: scale(0.95) translateY(0); }
+    40% { transform: scale(1.03) translateY(-2px); }
+    60% { transform: scale(0.99) translateY(0); }
+    80% { transform: scale(1.01) translateY(-0.5px); }
+    100% { transform: scale(1) translateY(0); }
+}
+
+.menu-btn:hover {
+    animation: buttonSpring 0.4s var(--ease-out-back);
+}
+
+/* Breathing Timer Effect */
+@keyframes breathe {
+    0%, 100% { opacity: 0.7; transform: scale(1); }
+    50% { opacity: 1; text-shadow: 0 0 15px currentColor; }
+}
+
+#timeDisplay.active-timer {
+    animation: breathe 1.5s ease-in-out infinite;
+}
+
+/* Score Flyup - appears at food position and floats up */
+.score-flyup {
+    position: fixed;
+    font-family: 'Orbitron', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--neon-primary);
+    text-shadow: 0 0 10px var(--neon-primary), 0 0 20px var(--neon-primary);
+    pointer-events: none;
+    z-index: 50;
+    animation: flyUp 0.8s var(--ease-out-expo) forwards;
+    transform: translateX(-50%);
+}
+
+@keyframes flyUp {
+    0% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(-30px) scale(1.2);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-60px) scale(1.3);
+    }
+}
+
+/* Menu Title Shine Effect */
+.game-title {
+    position: relative;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(0, 255, 136, 0.4) 50%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: titleShine 3s ease-in-out infinite;
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+.game-title .snake-emoji {
+    display: inline-block;
+    filter: drop-shadow(0 0 10px var(--neon-primary));
+}
+
+@keyframes titleShine {
+    0% { background-position: -200% center; }
+    50%, 100% { background-position: 200% center; }
+}
+
+/* Menu Fade In */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.overlay:not(.hidden) {
+    animation: fadeInUp 0.4s var(--ease-out-expo);
+}
+
+/* HUD Glass Panel Enhanced */
+.hud-item {
+    background: rgba(10, 10, 26, 0.8);
+    border: 1px solid rgba(0, 255, 136, 0.35);
+    box-shadow: 
+        0 0 25px rgba(0, 255, 136, 0.12),
+        inset 0 0 15px rgba(0, 255, 136, 0.05);
+    backdrop-filter: blur(16px);
+    border-radius: 16px;
+}
+
+/* Enhanced Button Glow */
+.menu-btn.primary:hover {
+    box-shadow: 
+        0 0 40px rgba(0, 255, 136, 0.5),
+        0 0 80px rgba(0, 255, 136, 0.25),
+        inset 0 0 20px rgba(0, 255, 136, 0.15);
+}
+
+.menu-btn.secondary:hover {
+    box-shadow: 
+        0 0 30px rgba(0, 212, 255, 0.4),
+        0 0 60px rgba(0, 212, 255, 0.2),
+        inset 0 0 15px rgba(0, 212, 255, 0.1);
+}
+
+/* Mode Button Active Glow */
+.mode-btn.active {
+    background: linear-gradient(135deg, rgba(255, 0, 170, 0.25) 0%, rgba(180, 0, 120, 0.15) 100%);
+    border: 1px solid rgba(255, 0, 170, 0.5);
+    box-shadow: 
+        0 0 20px rgba(255, 0, 170, 0.35),
+        inset 0 0 15px rgba(255, 0, 170, 0.15);
+}
+
+.mode-btn.active .mode-icon {
+    animation: modePulse 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px var(--neon-accent));
+}
+
+@keyframes modePulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+}
+
+/* New Record Flash */
+@keyframes newRecordFlash {
+    from { opacity: 0.7; transform: scale(1); }
+    to { opacity: 1; transform: scale(1.05); }
+}
+
+.new-record:not(.hidden) {
+    animation: newRecordFlash 0.5s ease-in-out infinite alternate;
+}
+
+/* Game Over Flicker */
+@keyframes gameoverFlicker {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+    52% { opacity: 1; }
+    54% { opacity: 0.8; }
+    56% { opacity: 1; }
+}
+
+.gameover-title {
+    animation: gameoverFlicker 2s ease-in-out infinite;
+}

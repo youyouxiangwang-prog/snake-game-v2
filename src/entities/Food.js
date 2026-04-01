@@ -1,292 +1,232 @@
 /**
- * Food.js - Food Entity
- * Based on SPEC.md Section 2.4
+ * Food.js - Food Entity (PBR Glow Upgrade)
  * 
- * Food spawns at random positions, max 3 at a time.
- * Each food gives 10 points.
+ * Upgraded with:
+ * - Emissive red apple with glow
+ * - PointLight following each food
+ * - Pulsing glow effect
+ * - Improved stem and leaf
  */
 
 import * as THREE from 'three';
-import { WORLD_CONFIG, COLLISION_CONFIG, SCORE_CONFIG } from '../core/Game.js';
+import { WORLD_CONFIG, COLLISION_CONFIG } from '../core/Game.js';
 
 export class Food {
     constructor(sceneManager) {
         this.sceneManager = sceneManager;
         this.scene = sceneManager.getScene();
         
-        // Food items array
         this.foods = [];
+        this.config = { maxCount: 3, radius: 0.45 };
+        this.lastEatenPosition = null;
         
-        // Configuration
-        this.config = {
-            maxCount: 3,
-            radius: 0.4,
-            spawnCheckInterval: 3000 // ms
-        };
-        
-        // Spawn timer
-        this.spawnTimer = 0;
-        
-        // Create food mesh template
         this.createMeshTemplate();
-        
-        console.log('[Food] Initialized');
+        console.log('[Food] Initialized with PBR glow');
     }
-
-    /**
-     * Create food mesh template
-     */
+    
     createMeshTemplate() {
-        // Apple material - SPEC Section 1.2.1
+        // Apple body - PBR with emissive glow
         this.appleMaterial = new THREE.MeshStandardMaterial({
-            color: 0xFF3333,
-            flatShading: true,
-            roughness: 0.6,
-            metalness: 0.1
+            color: 0xff2266,
+            emissive: 0xff0044,
+            emissiveIntensity: 0.5,
+            metalness: 0.2,
+            roughness: 0.4
         });
         
-        // Stem material
+        // Inner glow (additive)
+        this.glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff4488,
+            transparent: true,
+            opacity: 0.15,
+            side: THREE.BackSide
+        });
+        
         this.stemMaterial = new THREE.MeshStandardMaterial({
             color: 0x664422,
-            flatShading: true
+            metalness: 0.1,
+            roughness: 0.7
         });
         
-        // Leaf material
         this.leafMaterial = new THREE.MeshStandardMaterial({
-            color: 0x44CC44,
-            flatShading: true
+            color: 0x44dd44,
+            metalness: 0.0,
+            roughness: 0.6
         });
         
-        // Apple geometry - SPEC Section 1.3.2
-        this.appleGeometry = new THREE.SphereGeometry(
-            this.config.radius,
-            8,  // segmentsWidth
-            8   // segmentsHeight
-        );
-        
-        // Stem geometry
-        this.stemGeometry = new THREE.CylinderGeometry(0.03, 0.04, 0.15, 6);
-        
-        // Leaf geometry
-        this.leafGeometry = new THREE.ConeGeometry(0.08, 0.2, 4);
+        this.appleGeometry = new THREE.SphereGeometry(this.config.radius, 16, 12);
+        this.glowGeometry = new THREE.SphereGeometry(this.config.radius * 1.3, 12, 8);
+        this.stemGeometry = new THREE.CylinderGeometry(0.035, 0.055, 0.22, 6);
+        this.leafGeometry = new THREE.SphereGeometry(0.14, 8, 6);
     }
-
-    /**
-     * Create a food mesh
-     */
+    
     createMesh() {
         const group = new THREE.Group();
         
         // Apple body
         const apple = new THREE.Mesh(this.appleGeometry, this.appleMaterial);
+        apple.scale.set(1, 0.9, 1);
         apple.castShadow = true;
         apple.receiveShadow = true;
         group.add(apple);
         
+        // Glow sphere
+        const glow = new THREE.Mesh(this.glowGeometry, this.glowMaterial);
+        group.add(glow);
+        
         // Stem
         const stem = new THREE.Mesh(this.stemGeometry, this.stemMaterial);
-        stem.position.set(0, 0.45, 0);
+        stem.position.set(0, 0.5, 0);
         group.add(stem);
         
         // Leaf
         const leaf = new THREE.Mesh(this.leafGeometry, this.leafMaterial);
-        leaf.position.set(0.1, 0.5, 0);
-        leaf.rotation.z = Math.PI / 4;
+        leaf.scale.set(1.6, 0.4, 1);
+        leaf.position.set(0.12, 0.56, 0.05);
+        leaf.rotation.z = 0.5;
         group.add(leaf);
+        
+        // Shine highlight
+        const highlightGeo = new THREE.SphereGeometry(0.1, 8, 8);
+        const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
+        const highlight = new THREE.Mesh(highlightGeo, highlightMat);
+        highlight.position.set(-0.18, 0.18, -0.28);
+        group.add(highlight);
         
         return group;
     }
-
-    /**
-     * Spawn a new food item
-     */
+    
+    createLight() {
+        const light = new THREE.PointLight(0xff2266, 2.5, 8);
+        return light;
+    }
+    
     spawn(snakeHead, snakeBody) {
-        if (this.foods.length >= this.config.maxCount) {
-            return null;
-        }
+        if (this.foods.length >= this.config.maxCount) return null;
         
         const gridWidth = WORLD_CONFIG.size;
         const halfGrid = gridWidth / 2;
         
         let position = null;
         let attempts = 0;
-        const maxAttempts = 100;
         
-        // Find valid spawn position
         do {
             const x = Math.floor(Math.random() * (gridWidth - 4)) - halfGrid + 2;
             const z = Math.floor(Math.random() * (gridWidth - 4)) - halfGrid + 2;
-            
             position = { x, z };
             attempts++;
-        } while (this.isPositionOccupied(position, snakeHead, snakeBody) && attempts < maxAttempts);
+        } while (this.isPositionOccupied(position, snakeHead, snakeBody) && attempts < 100);
         
-        if (attempts >= maxAttempts) {
-            console.warn('[Food] Could not find valid spawn position');
-            return null;
-        }
+        if (attempts >= 100) return null;
         
-        // Create food object
         const food = {
             gridX: position.x,
             gridZ: position.z,
-            position: new THREE.Vector3(position.x, 0.4, position.z),
-            targetPosition: new THREE.Vector3(position.x, 0.4, position.z),
+            position: new THREE.Vector3(position.x, 0.5, position.z),
+            targetPosition: new THREE.Vector3(position.x, 0.5, position.z),
             mesh: this.createMesh(),
-            bobOffset: Math.random() * Math.PI * 2 // Random starting phase for bobbing
+            light: this.createLight(),
+            bobOffset: Math.random() * Math.PI * 2
         };
         
-        // Position mesh
         food.mesh.position.copy(food.position);
+        food.light.position.copy(food.position);
         this.scene.add(food.mesh);
-        
-        // Add to foods array
+        this.scene.add(food.light);
         this.foods.push(food);
-        
-        console.log(`[Food] Spawned at (${position.x}, ${position.z}), total: ${this.foods.length}`);
         
         return food;
     }
-
-    /**
-     * Check if position is occupied by snake or other food
-     */
+    
     isPositionOccupied(position, snakeHead, snakeBody) {
         const checkRadius = 1.5;
         
-        // Check snake head
         if (snakeHead) {
             const dx = position.x - snakeHead.x;
             const dz = position.z - snakeHead.z;
-            if (Math.sqrt(dx * dx + dz * dz) < checkRadius) {
-                return true;
-            }
+            if (Math.sqrt(dx * dx + dz * dz) < checkRadius) return true;
         }
         
-        // Check snake body
         if (snakeBody && Array.isArray(snakeBody)) {
             for (const seg of snakeBody) {
                 const dx = position.x - seg.x;
                 const dz = position.z - seg.z;
-                if (Math.sqrt(dx * dx + dz * dz) < checkRadius) {
-                    return true;
-                }
+                if (Math.sqrt(dx * dx + dz * dz) < checkRadius) return true;
             }
         }
         
-        // Check other food
         for (const food of this.foods) {
             const dx = position.x - food.gridX;
             const dz = position.z - food.gridZ;
-            if (Math.sqrt(dx * dx + dz * dz) < checkRadius) {
-                return true;
-            }
+            if (Math.sqrt(dx * dx + dz * dz) < checkRadius) return true;
         }
         
         return false;
     }
-
-    /**
-     * Remove a food item
-     */
+    
     remove(food) {
         const index = this.foods.indexOf(food);
         if (index > -1) {
-            // Remove mesh from scene
             this.scene.remove(food.mesh);
-            
-            // Dispose geometries and materials
-            food.mesh.traverse(child => {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) child.material.dispose();
-            });
-            
-            // Remove from array
+            this.scene.remove(food.light);
             this.foods.splice(index, 1);
-            
-            console.log(`[Food] Removed, remaining: ${this.foods.length}`);
         }
     }
-
-    /**
-     * Clear all food items
-     */
+    
     clear() {
         for (const food of this.foods) {
             this.scene.remove(food.mesh);
-            food.mesh.traverse(child => {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) child.material.dispose();
-            });
+            this.scene.remove(food.light);
         }
         this.foods = [];
-        console.log('[Food] Cleared all food');
     }
-
-    /**
-     * Check if food needs to spawn
-     */
-    needsSpawn() {
-        return this.foods.length < this.config.maxCount;
-    }
-
-    /**
-     * Check collision with snake head
-     */
+    
+    needsSpawn() { return this.foods.length < this.config.maxCount; }
+    
     checkCollision(headPosition) {
-        const eatDistance = COLLISION_CONFIG.eatDistance;
-        
         for (let i = this.foods.length - 1; i >= 0; i--) {
             const food = this.foods[i];
             const dx = headPosition.x - food.position.x;
             const dz = headPosition.z - food.position.z;
             const dist = Math.sqrt(dx * dx + dz * dz);
             
-            if (dist < eatDistance) {
-                // Remove and return food
+            if (dist < 0.9) {
                 const eaten = this.foods.splice(i, 1)[0];
                 this.scene.remove(eaten.mesh);
-                return true;
+                this.scene.remove(eaten.light);
+                this.lastEatenPosition = { x: food.position.x, y: food.position.y, z: food.position.z };
+                return { x: food.position.x, y: food.position.y, z: food.position.z };
             }
         }
-        
-        return false;
+        return null;
     }
-
-    /**
-     * Get all food positions
-     */
+    
+    getLastEatenPosition() {
+        return this.lastEatenPosition || null;
+    }
+    
     getPositions() {
         return this.foods.map(f => ({ x: f.gridX, z: f.gridZ }));
     }
-
-    /**
-     * Update interpolation (for smooth movement if needed)
-     */
-    updateInterpolation(alpha) {
-        // Food doesn't interpolate position like snake
-    }
-
-    /**
-     * Update food animation
-     */
+    
     update(deltaTime) {
         const time = performance.now() * 0.001;
         
         for (const food of this.foods) {
-            // Bobbing animation
-            const bob = Math.sin(time * 3 + food.bobOffset) * 0.05;
-            food.mesh.position.y = 0.4 + bob;
+            // Bobbing
+            const bob = Math.sin(time * 2.5 + food.bobOffset) * 0.18;
+            food.mesh.position.y = 0.5 + bob;
+            food.light.position.y = 0.5 + bob;
             
-            // Gentle rotation
-            food.mesh.rotation.y += deltaTime * 0.5;
+            // Rotation
+            food.mesh.rotation.y += deltaTime * 1.2;
+            
+            // Pulsing light
+            const pulse = 2.0 + Math.sin(time * 4 + food.bobOffset) * 0.8;
+            food.light.intensity = pulse;
         }
     }
-
-    /**
-     * Get food count
-     */
-    getCount() {
-        return this.foods.length;
-    }
+    
+    updateInterpolation(alpha) {}
+    getCount() { return this.foods.length; }
 }

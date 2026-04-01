@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { StateMachine, GameState } from './StateMachine.js';
 import { GameLoop, GAME_LOOP_CONFIG } from './GameLoop.js';
 import { SceneManager } from '../3d/SceneManager.js';
+import { Particles } from '../3d/Particles.js';
 import { Snake } from '../entities/Snake.js';
 import { Food } from '../entities/Food.js';
 import { Obstacle } from '../entities/Obstacle.js';
@@ -102,6 +103,9 @@ export class Game {
         this.menu = null;
         this.sceneManager = null;
         
+        // Effects
+        this.particles = null;
+        
         // Game loop
         this.gameLoop = new GameLoop();
         this.gameLoop.onFixedUpdate = this.fixedUpdate.bind(this);
@@ -123,6 +127,9 @@ export class Game {
         
         // Initialize 3D scene
         this.sceneManager = new SceneManager('canvasContainer');
+        
+        // Initialize particle system
+        this.particles = new Particles(this.sceneManager.getScene());
         
         // Initialize UI
         this.hud = new HUD();
@@ -327,6 +334,16 @@ export class Game {
         // Grow snake
         this.snake.grow();
         
+        // Particle burst at food position
+        const foodPos = this.food.getLastEatenPosition ? this.food.getLastEatenPosition() : null;
+        if (foodPos) {
+            this.particles.burst(foodPos, 0x00ff88);
+            this.createScoreFlyup(foodPos, `+${SCORE_CONFIG.foodValue}`);
+        }
+        
+        // Camera shake
+        this.sceneManager.triggerShake(0.25);
+        
         // Score pop animation
         this.hud.animateScorePop();
         
@@ -335,11 +352,46 @@ export class Game {
             this.snake.increaseSpeed();
         }
     }
+    
+    /**
+     * Create score flyup animation
+     */
+    createScoreFlyup(position, text) {
+        const flyup = document.createElement('div');
+        flyup.className = 'score-flyup';
+        flyup.textContent = text;
+        
+        // Project 3D position to screen
+        const scene = this.sceneManager.getScene();
+        const camera = this.sceneManager.getCamera();
+        
+        const vector = new THREE.Vector3(position.x, position.y + 1, position.z);
+        vector.project(camera);
+        
+        const x = (vector.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-(vector.y * 0.5) + 0.5) * window.innerHeight;
+        
+        flyup.style.left = x + 'px';
+        flyup.style.top = y + 'px';
+        
+        document.body.appendChild(flyup);
+        
+        setTimeout(() => {
+            if (flyup.parentNode) {
+                flyup.parentNode.removeChild(flyup);
+            }
+        }, 800);
+    }
 
     /**
      * Variable update - runs every frame
      */
     update(deltaTime) {
+        // Always update particles (even during pause for smooth effect)
+        if (this.particles) {
+            this.particles.update(deltaTime);
+        }
+        
         if (!this.stateMachine.is(GameState.PLAYING)) return;
         
         // Update snake visuals

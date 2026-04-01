@@ -1,4 +1,4 @@
-// Snake Game V3 - Snake Logic
+// Snake Game V3 - Snake Logic (PBR Head Upgrade)
 import * as THREE from 'three';
 
 export class Snake {
@@ -6,33 +6,37 @@ export class Snake {
         this.scene = scene;
         this.scene3d = scene;
         
-        // Snake configuration - optimized for bounded arena
+        // Snake configuration
         this.config = {
             initialLength: 5,
-            maxLength: 30,        // Reduced for smaller arena
+            maxLength: 30,
             speed: 5,
-            segmentSpacing: 0.8,
+            segmentSpacing: 0.85,
             turnSpeed: 10
         };
         
-        // Arena bounds (match Scene.js and COLLISION_CONFIG: -48 to 48)
+        // Arena bounds
         this.arenaSize = 48;
         
         // Current state
-        this.segments = []; // {x, z, mesh}
-        this.prevPositions = []; // For smooth interpolation
+        this.segments = [];
+        this.prevPositions = [];
         this.direction = { x: 0, z: -1 };
         this.nextDirection = { x: 0, z: -1 };
         this.isGrowing = false;
         this.moveTimer = 0;
-        this.moveInterval = 0.2; // seconds between moves
-        this.lerpFactor = 0.25; // Smoothing factor for movement interpolation
-        this.interpolationProgress = 0; // 0 to 1 between moves
+        this.moveInterval = 0.2;
+        this.lerpFactor = 0.25;
+        this.interpolationProgress = 0;
+        
+        // Wave animation
+        this.waveTime = 0;
         
         // 3D meshes
         this.headMesh = null;
         this.bodyMeshes = [];
         this.tailMesh = null;
+        this.tongue = null;
         
         // Create meshes
         this.createMeshes();
@@ -42,70 +46,128 @@ export class Snake {
     }
     
     createMeshes() {
-        // Snake head material
-        const headMat = new THREE.MeshLambertMaterial({
-            color: 0xFFCC00,
-            flatShading: true
+        // PBR Head material
+        const headMat = new THREE.MeshStandardMaterial({
+            color: 0x4ade80,
+            metalness: 0.1,
+            roughness: 0.6
         });
         
-        // Body material
-        const bodyMat = new THREE.MeshLambertMaterial({
-            color: 0xFFCC00,
-            flatShading: true
+        // PBR Body material
+        const bodyMat = new THREE.MeshStandardMaterial({
+            color: 0x22c55e,
+            metalness: 0.1,
+            roughness: 0.65
         });
         
-        // Tail material
-        const tailMat = new THREE.MeshLambertMaterial({
-            color: 0xDD9900,
-            flatShading: true
+        // PBR Tail material
+        const tailMat = new THREE.MeshStandardMaterial({
+            color: 0x16a34a,
+            metalness: 0.1,
+            roughness: 0.7
         });
         
-        // Create head (flattened cylinder)
-        const headGeo = new THREE.CylinderGeometry(0.6, 0.7, 0.6, 12);
+        // Create head - ellipsoid using scaled sphere
+        const headGeo = new THREE.SphereGeometry(0.65, 16, 12);
         this.headMesh = new THREE.Mesh(headGeo, headMat);
+        this.headMesh.scale.set(1, 0.75, 1.3);
         this.headMesh.castShadow = true;
+        this.headMesh.receiveShadow = true;
         this.scene.getScene().add(this.headMesh);
         
+        // Snout
+        const snoutGeo = new THREE.SphereGeometry(0.35, 12, 8);
+        const snout = new THREE.Mesh(snoutGeo, headMat.clone());
+        snout.scale.set(0.8, 0.6, 1);
+        snout.position.set(0, -0.05, -0.6);
+        snout.castShadow = true;
+        this.headMesh.add(snout);
+        
         // Eyes
-        const eyeGeo = new THREE.SphereGeometry(0.15, 8, 8);
-        const pupilGeo = new THREE.SphereGeometry(0.08, 6, 6);
-        const eyeMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
-        const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const eyeGeo = new THREE.SphereGeometry(0.14, 10, 10);
+        const pupilGeo = new THREE.SphereGeometry(0.08, 8, 8);
+        const eyeMat = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            metalness: 0.0,
+            roughness: 0.3
+        });
+        const pupilMat = new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            metalness: 0.8,
+            roughness: 0.2
+        });
         
         // Left eye
         const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-        leftEye.position.set(-0.25, 0.25, -0.35);
+        leftEye.position.set(-0.28, 0.25, -0.35);
+        leftEye.scale.set(1, 1, 0.7);
         this.headMesh.add(leftEye);
         
         const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
-        leftPupil.position.set(-0.25, 0.3, -0.4);
+        leftPupil.position.set(-0.28, 0.25, -0.42);
         this.headMesh.add(leftPupil);
+        
+        const leftHighlight = new THREE.Mesh(
+            new THREE.SphereGeometry(0.04, 6, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+        leftHighlight.position.set(-0.32, 0.32, -0.46);
+        this.headMesh.add(leftHighlight);
         
         // Right eye
         const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-        rightEye.position.set(0.25, 0.25, -0.35);
+        rightEye.position.set(0.28, 0.25, -0.35);
+        rightEye.scale.set(1, 1, 0.7);
         this.headMesh.add(rightEye);
         
         const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
-        rightPupil.position.set(0.25, 0.3, -0.4);
+        rightPupil.position.set(0.28, 0.25, -0.42);
         this.headMesh.add(rightPupil);
+        
+        const rightHighlight = new THREE.Mesh(
+            new THREE.SphereGeometry(0.04, 6, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffffff })
+        );
+        rightHighlight.position.set(0.24, 0.32, -0.46);
+        this.headMesh.add(rightHighlight);
         
         // Tongue
         this.tongue = this.createTongue();
         this.headMesh.add(this.tongue);
         
-        // Create body segment meshes
+        // Create body segment meshes with varying radii
         for (let i = 0; i < this.config.maxLength; i++) {
-            const segGeo = new THREE.CylinderGeometry(0.45, 0.5, 0.5, 10);
+            const t = i / this.config.maxLength;
+            const radius = THREE.MathUtils.lerp(0.55, 0.28, t);
+            const segGeo = new THREE.SphereGeometry(radius, 12, 8);
             const segMesh = new THREE.Mesh(segGeo, bodyMat.clone());
             segMesh.castShadow = true;
+            segMesh.receiveShadow = true;
             segMesh.visible = false;
             this.scene.getScene().add(segMesh);
             this.bodyMeshes.push(segMesh);
         }
         
-        // Tail
-        const tailGeo = new THREE.ConeGeometry(0.4, 0.6, 8);
+        // Connector meshes for smooth body
+        this.connectorMeshes = [];
+        for (let i = 0; i < this.config.maxLength - 1; i++) {
+            const t = i / this.config.maxLength;
+            const radius = THREE.MathUtils.lerp(0.45, 0.25, t);
+            const connGeo = new THREE.SphereGeometry(radius * 0.7, 8, 6);
+            const connMat = new THREE.MeshStandardMaterial({
+                color: 0x22c55e,
+                metalness: 0.1,
+                roughness: 0.65
+            });
+            const connector = new THREE.Mesh(connGeo, connMat);
+            connector.castShadow = true;
+            connector.visible = false;
+            this.scene.getScene().add(connector);
+            this.connectorMeshes.push(connector);
+        }
+        
+        // Tail - tapered
+        const tailGeo = new THREE.ConeGeometry(0.28, 0.9, 10);
         this.tailMesh = new THREE.Mesh(tailGeo, tailMat);
         this.tailMesh.castShadow = true;
         this.tailMesh.visible = false;
@@ -116,72 +178,61 @@ export class Snake {
         const tongueGroup = new THREE.Group();
         tongueGroup.name = 'tongue';
         
-        const tongueMat = new THREE.MeshBasicMaterial({
-            color: 0xFF3333,
-            side: THREE.DoubleSide
+        const tongueMat = new THREE.MeshStandardMaterial({
+            color: 0xf87171,
+            metalness: 0.0,
+            roughness: 0.8
         });
         
-        // Simple V-shape tongue using two small cones
-        const tongueLen = 0.4;
-        const forkAngle = 0.3;
+        const tongueLen = 0.35;
+        const forkAngle = 0.35;
         
-        // Left part
-        const leftGeo = new THREE.ConeGeometry(0.04, tongueLen, 4);
+        const leftGeo = new THREE.ConeGeometry(0.035, tongueLen, 6);
         const leftTongue = new THREE.Mesh(leftGeo, tongueMat);
         leftTongue.rotation.x = Math.PI / 2;
         leftTongue.rotation.z = forkAngle;
         leftTongue.position.z = -tongueLen / 2;
         tongueGroup.add(leftTongue);
         
-        // Right part
-        const rightGeo = new THREE.ConeGeometry(0.04, tongueLen, 4);
+        const rightGeo = new THREE.ConeGeometry(0.035, tongueLen, 6);
         const rightTongue = new THREE.Mesh(rightGeo, tongueMat);
         rightTongue.rotation.x = Math.PI / 2;
         rightTongue.rotation.z = -forkAngle;
         rightTongue.position.z = -tongueLen / 2;
         tongueGroup.add(rightTongue);
         
-        // Base
-        const baseGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.15, 6);
+        const baseGeo = new THREE.CylinderGeometry(0.04, 0.055, 0.12, 6);
         const base = new THREE.Mesh(baseGeo, tongueMat);
         base.rotation.x = Math.PI / 2;
         tongueGroup.add(base);
         
-        tongueGroup.position.set(0, 0.2, -0.5);
+        tongueGroup.position.set(0, 0.1, -0.55);
         
         return tongueGroup;
     }
     
     reset() {
-        // Clear segments
         this.segments = [];
         this.prevPositions = [];
         
-        // Create initial segments
         const startX = 0;
         const startZ = 0;
         
         for (let i = 0; i < this.config.initialLength; i++) {
             this.segments.push({
                 x: startX,
-                z: startZ + i * this.config.segmentSpacing,
-                mesh: null
+                z: startZ + i * this.config.segmentSpacing
             });
-            // Also store prev positions for interpolation
             this.prevPositions.push({
                 x: startX,
                 z: startZ + i * this.config.segmentSpacing
             });
         }
         
-        // Reset direction
         this.direction = { x: 0, z: -1 };
         this.nextDirection = { x: 0, z: -1 };
-        
-        // Reset speed
         this.moveInterval = 0.2;
         
-        // Update meshes
         this.updateMeshPositions();
         this.hideMeshes();
     }
@@ -189,11 +240,12 @@ export class Snake {
     hideMeshes() {
         this.headMesh.visible = false;
         this.bodyMeshes.forEach(m => m.visible = false);
+        this.connectorMeshes.forEach(m => m.visible = false);
         this.tailMesh.visible = false;
+        if (this.tongue) this.tongue.visible = false;
     }
     
     setDirection(dir) {
-        // Prevent 180 degree turns
         if (dir === 'UP' && this.direction.z !== 1) {
             this.nextDirection = { x: 0, z: -1 };
         } else if (dir === 'DOWN' && this.direction.z !== -1) {
@@ -206,10 +258,16 @@ export class Snake {
     }
     
     update(deltaTime) {
-        // Apply direction change
-        this.direction = { ...this.nextDirection };
+        this.waveTime += deltaTime * 0.001;
         
-        // Move timer
+        // Tongue flicker animation
+        if (this.tongue) {
+            const extend = (Math.sin(this.waveTime * 8) + 1) * 0.5 * 0.3;
+            this.tongue.scale.z = 0.5 + extend;
+            this.tongue.visible = Math.sin(this.waveTime * 6) > 0.3;
+        }
+        
+        this.direction = { ...this.nextDirection };
         this.moveTimer += deltaTime;
         
         if (this.moveTimer >= this.moveInterval) {
@@ -217,57 +275,43 @@ export class Snake {
             this.move();
             this.interpolationProgress = 0;
         } else {
-            // Track interpolation progress within the interval
             this.interpolationProgress = Math.min(1, this.moveTimer / this.moveInterval);
         }
         
-        // Update mesh positions
         this.updateMeshPositions();
-        
-        return false; // No collision yet (handled in Game)
+        return false;
     }
     
     move() {
-        // Store previous positions for interpolation before moving
         this.prevPositions = this.segments.map(s => ({ x: s.x, z: s.z }));
         
-        // Move head
         const head = this.segments[0];
         head.x += this.direction.x;
         head.z += this.direction.z;
         
-        // Grow if needed
         if (this.isGrowing) {
             const lastSeg = this.segments[this.segments.length - 1];
             this.segments.push({
                 x: lastSeg.x,
-                z: lastSeg.z,
-                mesh: null
+                z: lastSeg.z
             });
-            // Add prev position for new segment
             this.prevPositions.push({ x: lastSeg.x, z: lastSeg.z });
             this.isGrowing = false;
         }
         
-        // Move body (each segment follows the one before it)
         for (let i = this.segments.length - 1; i > 0; i--) {
-            const current = this.segments[i];
-            const target = this.segments[i - 1];
-            current.x = target.x;
-            current.z = target.z;
+            this.segments[i].x = this.segments[i - 1].x;
+            this.segments[i].z = this.segments[i - 1].z;
         }
     }
     
     updateMeshPositions() {
-        // Calculate interpolation (ease-out for smooth deceleration)
         const t = this.easeOutCubic(this.interpolationProgress);
         
-        // Position head
         const head = this.segments[0];
         let headX = head.x;
         let headZ = head.z;
         
-        // Interpolate head if we have prev positions
         if (this.prevPositions.length > 0 && this.interpolationProgress > 0) {
             const prevHead = this.prevPositions[0];
             headX = prevHead.x + (head.x - prevHead.x) * t;
@@ -278,41 +322,54 @@ export class Snake {
         this.headMesh.rotation.y = Math.atan2(this.direction.x, this.direction.z);
         this.headMesh.visible = true;
         
-        // Position body segments with smooth interpolation
+        // Wave offset for body segments
+        const waveAmp = 0.08;
+        
+        // Position body segments
         for (let i = 0; i < this.segments.length - 1; i++) {
             const seg = this.segments[i];
             const mesh = this.bodyMeshes[i];
+            const connector = this.connectorMeshes[i];
             
             if (mesh && i < this.bodyMeshes.length) {
                 let segX = seg.x;
                 let segZ = seg.z;
                 
-                // Interpolate if we have prev positions
                 if (this.prevPositions.length > i + 1 && this.interpolationProgress > 0) {
                     const prevSeg = this.prevPositions[i + 1];
                     segX = prevSeg.x + (seg.x - prevSeg.x) * t;
                     segZ = prevSeg.z + (seg.z - prevSeg.z) * t;
                 }
                 
-                mesh.position.set(segX, 0.35, segZ);
+                // Wave motion
+                const waveOffset = Math.sin(i * 0.6 + this.waveTime * 4) * waveAmp;
+                
+                mesh.position.set(segX, 0.35 + waveOffset, segZ);
                 mesh.visible = true;
                 
-                // Calculate rotation towards next segment
+                // Connector between segments
+                if (connector && i < this.segments.length - 2) {
+                    const nextSeg = this.segments[i + 1];
+                    const connX = (segX + nextSeg.x) / 2;
+                    const connZ = (segZ + nextSeg.z) / 2;
+                    const nextWave = Math.sin((i + 1) * 0.6 + this.waveTime * 4) * waveAmp;
+                    connector.position.set(connX, 0.35 + (waveOffset + nextWave) / 2, connZ);
+                    connector.visible = true;
+                }
+                
+                // Calculate rotation
                 if (i < this.segments.length - 2) {
                     const next = this.segments[i + 1];
-                    const nextX = seg.x + (next.x - seg.x) * t;
-                    const nextZ = seg.z + (next.z - seg.z) * t;
-                    const angle = Math.atan2(nextX - segX, nextZ - segZ);
+                    const angle = Math.atan2(next.x - seg.x, next.z - seg.z);
                     mesh.rotation.y = angle;
                 } else {
-                    // Last body segment, face the tail
                     const angle = Math.atan2(headX - segX, headZ - segZ);
                     mesh.rotation.y = angle;
                 }
             }
         }
         
-        // Position tail
+        // Tail position
         if (this.segments.length >= 2) {
             const last = this.segments[this.segments.length - 1];
             const prev = this.segments[this.segments.length - 2];
@@ -331,24 +388,12 @@ export class Snake {
         }
     }
     
-    // Ease-out cubic for smooth interpolation
     easeOutCubic(t) {
         return 1 - Math.pow(1 - t, 3);
     }
     
     updateVisuals(time) {
-        // Tongue animation - always slightly out with flickering
-        if (this.tongue) {
-            const flicker = Math.sin(time * 0.01) * 0.05;
-            const baseLen = 0.4;
-            this.tongue.scale.z = 1 + flicker;
-        }
-        
-        // Subtle head bob
-        if (this.headMesh) {
-            const bob = Math.sin(time * 0.005) * 0.02;
-            this.headMesh.position.y = 0.4 + bob;
-        }
+        // Additional visual updates handled in update()
     }
     
     grow() {
@@ -373,9 +418,9 @@ export class Snake {
     checkSelfCollision() {
         if (this.segments.length < 2) return false;
         const head = this.segments[0];
-        const threshold = 0.6; // Collision distance
+        const threshold = 0.6;
         
-        for (let i = 4; i < this.segments.length; i++) { // Start from 4 to skip near-head segments
+        for (let i = 4; i < this.segments.length; i++) {
             const seg = this.segments[i];
             const dx = head.x - seg.x;
             const dz = head.z - seg.z;
@@ -390,5 +435,13 @@ export class Snake {
     
     increaseSpeed() {
         this.moveInterval = Math.max(0.1, this.moveInterval - 0.02);
+    }
+    
+    triggerDeath() {
+        // Animate death by scattering segments
+        // Simple implementation - just hide after a delay
+        setTimeout(() => {
+            this.hideMeshes();
+        }, 500);
     }
 }

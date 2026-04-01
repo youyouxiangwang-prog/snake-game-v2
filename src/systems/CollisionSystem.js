@@ -75,8 +75,15 @@ export class CollisionSystem {
             const dist = Math.sqrt(dx * dx + dz * dz);
             
             if (dist < eatDistance) {
+                // Store eaten position for effects before removing
+                this.food.lastEatenPosition = { 
+                    x: food.position.x, 
+                    y: food.position.y, 
+                    z: food.position.z 
+                };
                 // Remove the food
                 this.food.scene.remove(food.mesh);
+                if (food.light) this.food.scene.remove(food.light);
                 foods.splice(i, 1);
                 return true;
             }

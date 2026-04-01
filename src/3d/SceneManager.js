@@ -1,99 +1,68 @@
 /**
- * SceneManager.js - Three.js Scene Setup and Management
- * Based on SPEC.md Section 5.3
+ * SceneManager.js - Three.js Scene Setup and Management (PBR Upgrade)
  * 
- * Sets up the 3D scene with:
- * - Perspective camera with follow behavior
- * - HemisphereLight + DirectionalLight with shadows
- * - Ground with grid lines
- * - Boundary walls
+ * Upgraded with:
+ * - PBR lighting (warm directional + cool fill)
+ * - Glass boundary walls (MeshPhysicalMaterial)
+ * - Glowing arena boundary lines
+ * - Improved ground with vertex displacement
+ * - Soft PCF shadows
+ * - ACES filmic tone mapping
+ * - Camera shake support
  */
 
 import * as THREE from 'three';
 import { WORLD_CONFIG, COLLISION_CONFIG, MOVEMENT_CONFIG } from '../core/Game.js';
 
-// Camera configuration from SPEC Section 1.5
 const CAMERA_CONFIG = {
     fov: 60,
     near: 0.1,
     far: 1000,
     follow: {
-        offset: new THREE.Vector3(0, 15, 15),
+        offset: new THREE.Vector3(0, 18, 18),
         lookAhead: 5,
         lerpFactor: 0.05
     }
 };
 
-// Lighting configuration from SPEC Section 1.2.2
 const LIGHTING_CONFIG = {
-    hemisphere: {
-        skyColor: 0x87CEEB,
-        groundColor: 0x228822,
-        intensity: 0.6
-    },
-    directional: {
-        color: 0xFFFFAA,
-        intensity: 1.0,
-        position: new THREE.Vector3(5, 10, 5)
-    }
+    ambient: { color: 0x404060, intensity: 0.5 },
+    hemisphere: { skyColor: 0x87ceeb, groundColor: 0x2d5a27, intensity: 0.35 },
+    directional: { color: 0xFFEDD0, intensity: 1.8, position: new THREE.Vector3(20, 40, 20) },
+    fill: { color: 0x6080FF, intensity: 0.35, position: new THREE.Vector3(-20, 15, -20) }
 };
 
-// Shadow configuration from SPEC Section 4.2
-const SHADOW_CONFIG = {
-    mapSize: 1024,
-    camera: {
-        near: 0.5,
-        far: 50,
-        left: -25,
-        right: 25,
-        top: 25,
-        bottom: -25
-    }
-};
-
-// Color palette from SPEC Section 1.4
-const COLOR_PALETTE = {
-    ground: 0x228822,
-    gridLine: 0x114411,
-    wall: 0x228822,
-    wallTop: 0x2a772a
-};
+const ARENA_SIZE = 48;
+const WALL_HEIGHT = 2.5;
 
 export class SceneManager {
     constructor(containerId) {
         this.containerId = containerId;
         this.container = document.getElementById(containerId);
-        
-        // Detect mobile for performance optimization
         this.isMobile = this.detectMobile();
         
-        // Create scene
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x87CEEB);
+        this.scene.background = new THREE.Color(0x0f172a);
         
-        // Setup components
+        // Camera shake state
+        this.shakeIntensity = 0;
+        this.shakeDecay = 0.92;
+        this.shakeOffset = { x: 0, y: 0, z: 0 };
+        
         this.setupRenderer();
         this.setupCamera();
         this.setupLighting();
         this.setupEnvironment();
         
-        // Handle resize
         window.addEventListener('resize', this.onResize.bind(this));
         
         console.log(`[SceneManager] Initialized (mobile: ${this.isMobile})`);
     }
-
-    /**
-     * Detect mobile device
-     */
+    
     detectMobile() {
-        return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
-               window.innerWidth < 768;
+        return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 768;
     }
-
-    /**
-     * Setup Three.js renderer
-     */
+    
     setupRenderer() {
         this.renderer = new THREE.WebGLRenderer({
             antialias: !this.isMobile,
@@ -101,26 +70,23 @@ export class SceneManager {
             powerPreference: 'high-performance'
         });
         
-        // Set size
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         
-        // Set pixel ratio (cap at 1.5 for mobile, 2.0 for desktop - SPEC Section 4.4)
         const maxDPR = this.isMobile ? 1.5 : 2.0;
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxDPR));
         
-        // Enable shadows
         this.renderer.shadowMap.enabled = true;
-        // Use BasicShadowMap for mobile (faster), PCFSoftShadowMap for desktop (better quality)
-        this.renderer.shadowMap.type = this.isMobile ? 
-            THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.type = this.isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+        this.renderer.shadowMap.radius = this.isMobile ? 1 : 4;
         
-        // Add canvas to container
+        // Tone mapping for better colors
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.2;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        
         this.container.appendChild(this.renderer.domElement);
     }
-
-    /**
-     * Setup camera
-     */
+    
     setupCamera() {
         this.camera = new THREE.PerspectiveCamera(
             CAMERA_CONFIG.fov,
@@ -129,19 +95,20 @@ export class SceneManager {
             CAMERA_CONFIG.far
         );
         
-        // Initial camera position
         this.camera.position.set(0, 20, 20);
         this.camera.lookAt(0, 0, 0);
-        
-        // Camera target for smooth follow
         this.cameraTarget = new THREE.Vector3();
     }
-
-    /**
-     * Setup lighting
-     */
+    
     setupLighting() {
-        // Hemisphere light - SPEC Section 1.2.2
+        // Ambient light
+        this.ambientLight = new THREE.AmbientLight(
+            LIGHTING_CONFIG.ambient.color,
+            LIGHTING_CONFIG.ambient.intensity
+        );
+        this.scene.add(this.ambientLight);
+        
+        // Hemisphere light for sky/ground color bleed
         this.hemisphereLight = new THREE.HemisphereLight(
             LIGHTING_CONFIG.hemisphere.skyColor,
             LIGHTING_CONFIG.hemisphere.groundColor,
@@ -149,7 +116,7 @@ export class SceneManager {
         );
         this.scene.add(this.hemisphereLight);
         
-        // Directional light with shadows - SPEC Section 1.2.2
+        // Main directional light (warm sun)
         this.directionalLight = new THREE.DirectionalLight(
             LIGHTING_CONFIG.directional.color,
             LIGHTING_CONFIG.directional.intensity
@@ -157,133 +124,128 @@ export class SceneManager {
         this.directionalLight.position.copy(LIGHTING_CONFIG.directional.position);
         this.directionalLight.castShadow = true;
         
-        // Shadow configuration
-        this.directionalLight.shadow.mapSize.width = this.isMobile ? 512 : SHADOW_CONFIG.mapSize;
-        this.directionalLight.shadow.mapSize.height = this.isMobile ? 512 : SHADOW_CONFIG.mapSize;
-        
-        // Shadow camera bounds
-        this.directionalLight.shadow.camera.near = SHADOW_CONFIG.camera.near;
-        this.directionalLight.shadow.camera.far = SHADOW_CONFIG.camera.far;
-        this.directionalLight.shadow.camera.left = SHADOW_CONFIG.camera.left;
-        this.directionalLight.shadow.camera.right = SHADOW_CONFIG.camera.right;
-        this.directionalLight.shadow.camera.top = SHADOW_CONFIG.camera.top;
-        this.directionalLight.shadow.camera.bottom = SHADOW_CONFIG.camera.bottom;
+        const shadowSize = this.isMobile ? 512 : 1024;
+        this.directionalLight.shadow.mapSize.width = shadowSize;
+        this.directionalLight.shadow.mapSize.height = shadowSize;
+        this.directionalLight.shadow.camera.near = 1;
+        this.directionalLight.shadow.camera.far = 150;
+        this.directionalLight.shadow.camera.left = -60;
+        this.directionalLight.shadow.camera.right = 60;
+        this.directionalLight.shadow.camera.top = 60;
+        this.directionalLight.shadow.camera.bottom = -60;
+        this.directionalLight.shadow.bias = -0.001;
         
         this.scene.add(this.directionalLight);
         this.scene.add(this.directionalLight.target);
+        
+        // Fill light (cool blue from opposite side)
+        this.fillLight = new THREE.DirectionalLight(
+            LIGHTING_CONFIG.fill.color,
+            LIGHTING_CONFIG.fill.intensity
+        );
+        this.fillLight.position.copy(LIGHTING_CONFIG.fill.position);
+        this.scene.add(this.fillLight);
     }
-
-    /**
-     * Setup environment (ground, grid, walls)
-     */
+    
     setupEnvironment() {
-        // Ground - SPEC Section 1.3.2
         this.createGround();
-        
-        // Grid lines
         this.createGridLines();
-        
-        // Boundary walls
         this.createBoundaryWalls();
+        this.createBoundaryGlow();
         
         // Fog for depth
-        this.scene.fog = new THREE.Fog(0x87CEEB, 50, 100);
+        this.scene.fog = new THREE.FogExp2(0x0f172a, 0.012);
     }
-
-    /**
-     * Create ground plane
-     */
+    
     createGround() {
         const groundSize = WORLD_CONFIG.size;
         
-        // Ground geometry - SPEC Section 1.3.2 (PlaneBufferGeometry)
-        const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
+        // Ground geometry with vertex displacement
+        const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize, 80, 80);
         
-        // Ground material - SPEC Section 1.2.1 (MeshStandardMaterial with flatShading)
+        // Add terrain variation
+        const positions = groundGeometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+            const x = positions.getX(i);
+            const y = positions.getY(i);
+            const distFromCenter = Math.sqrt(x*x + y*y) / (groundSize / 2);
+            const flatZone = Math.max(0, 1 - distFromCenter * 1.5);
+            const bump = (Math.sin(x * 0.5) * Math.cos(y * 0.5) * 0.25 +
+                         Math.sin(x * 1.2 + y * 0.8) * 0.12) * (1 - flatZone);
+            positions.setZ(i, bump);
+        }
+        groundGeometry.computeVertexNormals();
+        
+        // PBR ground material
         const groundMaterial = new THREE.MeshStandardMaterial({
-            color: COLOR_PALETTE.ground,
-            flatShading: true,
-            roughness: 1.0
+            color: 0x1a6b2a,
+            roughness: 0.95,
+            metalness: 0.0
         });
         
         this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
         this.ground.rotation.x = -Math.PI / 2;
-        this.ground.position.y = -0.05;
+        this.ground.position.y = -0.15;
         this.ground.receiveShadow = true;
         this.scene.add(this.ground);
     }
-
-    /**
-     * Create grid lines on ground
-     */
+    
     createGridLines() {
         const gridSize = WORLD_CONFIG.size;
         const halfGrid = gridSize / 2;
-        const cellSize = WORLD_CONFIG.cellSize;
+        const cellSize = 2;
         
         const points = [];
         
-        // Create grid lines
         for (let i = -halfGrid; i <= halfGrid; i += cellSize) {
-            // Vertical lines (along X axis)
-            points.push(new THREE.Vector3(i, 0.01, -halfGrid));
-            points.push(new THREE.Vector3(i, 0.01, halfGrid));
-            
-            // Horizontal lines (along Z axis)
-            points.push(new THREE.Vector3(-halfGrid, 0.01, i));
-            points.push(new THREE.Vector3(halfGrid, 0.01, i));
+            points.push(new THREE.Vector3(i, 0.02, -halfGrid));
+            points.push(new THREE.Vector3(i, 0.02, halfGrid));
+            points.push(new THREE.Vector3(-halfGrid, 0.02, i));
+            points.push(new THREE.Vector3(halfGrid, 0.02, i));
         }
         
-        // Create line geometry
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
-        
-        // Line material
         const material = new THREE.LineBasicMaterial({
-            color: COLOR_PALETTE.gridLine,
+            color: 0x1a4a1a,
             transparent: true,
-            opacity: 0.5
+            opacity: 0.25
         });
         
         this.gridLines = new THREE.LineSegments(geometry, material);
         this.scene.add(this.gridLines);
     }
-
-    /**
-     * Create boundary walls
-     */
+    
     createBoundaryWalls() {
-        const wallHeight = 2;
-        const wallThickness = 0.5;
-        const gridSize = WORLD_CONFIG.size;
-        const halfGrid = gridSize / 2;
+        const halfGrid = ARENA_SIZE;
         
-        // Wall material
-        const wallMaterial = new THREE.MeshStandardMaterial({
-            color: COLOR_PALETTE.wall,
-            flatShading: true,
-            roughness: 1.0
+        // Glass wall material
+        const wallMaterial = new THREE.MeshPhysicalMaterial({
+            color: 0x0a3d1a,
+            metalness: 0.0,
+            roughness: 0.15,
+            transmission: 0.5,
+            thickness: 0.8,
+            transparent: true,
+            opacity: 0.7
         });
         
-        // Wall top material (lighter)
-        const wallTopMaterial = new THREE.MeshStandardMaterial({
-            color: COLOR_PALETTE.wallTop,
-            flatShading: true
+        // Glowing top cap
+        const capMaterial = new THREE.MeshStandardMaterial({
+            color: 0x22ff88,
+            emissive: 0x22ff88,
+            emissiveIntensity: 0.5,
+            metalness: 0.3,
+            roughness: 0.4
         });
         
-        // Wall positions
         const walls = [
-            // North wall (-Z)
-            { pos: [0, wallHeight / 2, -halfGrid], size: [gridSize, wallHeight, wallThickness] },
-            // South wall (+Z)
-            { pos: [0, wallHeight / 2, halfGrid], size: [gridSize, wallHeight, wallThickness] },
-            // West wall (-X)
-            { pos: [-halfGrid, wallHeight / 2, 0], size: [wallThickness, wallHeight, gridSize] },
-            // East wall (+X)
-            { pos: [halfGrid, wallHeight / 2, 0], size: [wallThickness, wallHeight, gridSize] }
+            { pos: [0, WALL_HEIGHT / 2, -halfGrid], size: [halfGrid * 2, WALL_HEIGHT, 0.6] },
+            { pos: [0, WALL_HEIGHT / 2, halfGrid], size: [halfGrid * 2, WALL_HEIGHT, 0.6] },
+            { pos: [-halfGrid, WALL_HEIGHT / 2, 0], size: [0.6, WALL_HEIGHT, halfGrid * 2] },
+            { pos: [halfGrid, WALL_HEIGHT / 2, 0], size: [0.6, WALL_HEIGHT, halfGrid * 2] }
         ];
         
         walls.forEach(({ pos, size }) => {
-            // Main wall
             const geometry = new THREE.BoxGeometry(...size);
             const wall = new THREE.Mesh(geometry, wallMaterial);
             wall.position.set(...pos);
@@ -291,100 +253,117 @@ export class SceneManager {
             wall.receiveShadow = true;
             this.scene.add(wall);
             
-            // Top cap
-            const capGeometry = new THREE.BoxGeometry(size[0], 0.2, size[2]);
-            const cap = new THREE.Mesh(capGeometry, wallTopMaterial);
-            cap.position.set(pos[0], wallHeight, pos[2]);
+            const capGeo = new THREE.BoxGeometry(size[0], 0.15, size[2]);
+            const cap = new THREE.Mesh(capGeo, capMaterial);
+            cap.position.set(pos[0], WALL_HEIGHT, pos[2]);
             this.scene.add(cap);
         });
         
         // Corner pillars
         const corners = [
-            [-halfGrid, -halfGrid],
-            [-halfGrid, halfGrid],
-            [halfGrid, -halfGrid],
-            [halfGrid, halfGrid]
+            [-halfGrid, -halfGrid], [-halfGrid, halfGrid],
+            [halfGrid, -halfGrid], [halfGrid, halfGrid]
         ];
         
-        const pillarGeometry = new THREE.CylinderGeometry(0.4, 0.5, wallHeight + 0.5, 6);
-        
         corners.forEach(([x, z]) => {
-            const pillar = new THREE.Mesh(pillarGeometry, wallMaterial);
-            pillar.position.set(x, (wallHeight + 0.5) / 2, z);
+            const pillarGeo = new THREE.CylinderGeometry(0.5, 0.6, WALL_HEIGHT + 0.5, 8);
+            const pillar = new THREE.Mesh(pillarGeo, wallMaterial);
+            pillar.position.set(x, (WALL_HEIGHT + 0.5) / 2, z);
             pillar.castShadow = true;
             this.scene.add(pillar);
             
-            // Pillar cap
-            const capGeo = new THREE.CylinderGeometry(0.5, 0.4, 0.3, 6);
-            const cap = new THREE.Mesh(capGeo, wallTopMaterial);
-            cap.position.set(x, wallHeight + 0.6, z);
+            const capGeo = new THREE.CylinderGeometry(0.6, 0.5, 0.25, 8);
+            const cap = new THREE.Mesh(capGeo, capMaterial);
+            cap.position.set(x, WALL_HEIGHT + 0.6, z);
             this.scene.add(cap);
         });
     }
-
-    /**
-     * Update camera to follow target
-     */
-    updateCamera(targetPos, direction) {
-        // Calculate target camera position
-        const targetX = targetPos.x + CAMERA_CONFIG.follow.offset.x;
-        const targetZ = targetPos.z + CAMERA_CONFIG.follow.offset.z;
+    
+    createBoundaryGlow() {
+        // Inner glow ring
+        const segments = 128;
+        const radius = ARENA_SIZE - 0.5;
         
-        // Smooth interpolation
+        const points = [];
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            points.push(new THREE.Vector3(
+                Math.cos(angle) * radius, 0.05, Math.sin(angle) * radius
+            ));
+        }
+        
+        const ringGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const ringMat = new THREE.LineBasicMaterial({
+            color: 0x22ff88,
+            transparent: true,
+            opacity: 0.6
+        });
+        this.scene.add(new THREE.Line(ringGeo, ringMat));
+        
+        // Outer faint ring
+        const outerPoints = [];
+        for (let i = 0; i <= segments; i++) {
+            const angle = (i / segments) * Math.PI * 2;
+            outerPoints.push(new THREE.Vector3(
+                Math.cos(angle) * (radius + 1.5), 0.05, Math.sin(angle) * (radius + 1.5)
+            ));
+        }
+        const outerGeo = new THREE.BufferGeometry().setFromPoints(outerPoints);
+        const outerMat = new THREE.LineBasicMaterial({
+            color: 0x22ff88,
+            transparent: true,
+            opacity: 0.2
+        });
+        this.scene.add(new THREE.Line(outerGeo, outerMat));
+    }
+    
+    updateCamera(targetPos, direction) {
+        // Apply shake decay
+        if (this.shakeIntensity > 0.01) {
+            this.shakeOffset.x = (Math.random() - 0.5) * this.shakeIntensity;
+            this.shakeOffset.y = (Math.random() - 0.5) * this.shakeIntensity * 0.5;
+            this.shakeOffset.z = (Math.random() - 0.5) * this.shakeIntensity;
+            this.shakeIntensity *= this.shakeDecay;
+        } else {
+            this.shakeOffset.x = 0;
+            this.shakeOffset.y = 0;
+            this.shakeOffset.z = 0;
+        }
+        
+        const targetX = targetPos.x + CAMERA_CONFIG.follow.offset.x + this.shakeOffset.x;
+        const targetZ = targetPos.z + CAMERA_CONFIG.follow.offset.z + this.shakeOffset.z;
+        const targetY = CAMERA_CONFIG.follow.offset.y + this.shakeOffset.y;
+        
         const lerpFactor = CAMERA_CONFIG.follow.lerpFactor;
         this.camera.position.x += (targetX - this.camera.position.x) * lerpFactor;
         this.camera.position.z += (targetZ - this.camera.position.z) * lerpFactor;
-        this.camera.position.y = CAMERA_CONFIG.follow.offset.y;
+        this.camera.position.y = targetY;
         
-        // Look at point ahead of snake
         const lookAtX = targetPos.x + direction.x * CAMERA_CONFIG.follow.lookAhead;
         const lookAtZ = targetPos.z + direction.z * CAMERA_CONFIG.follow.lookAhead;
-        
         this.camera.lookAt(lookAtX, 0, lookAtZ);
         
-        // Update directional light to follow
         this.directionalLight.position.set(
-            this.camera.position.x + 5,
-            10,
-            this.camera.position.z + 5
+            this.camera.position.x + 15, 30, this.camera.position.z + 15
         );
         this.directionalLight.target.position.set(targetPos.x, 0, targetPos.z);
     }
-
-    /**
-     * Handle window resize
-     */
+    
+    triggerShake(intensity = 0.4) {
+        this.shakeIntensity = intensity;
+    }
+    
     onResize() {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
-
-    /**
-     * Render the scene
-     */
+    
     render() {
         this.renderer.render(this.scene, this.camera);
     }
-
-    /**
-     * Get the scene
-     */
-    getScene() {
-        return this.scene;
-    }
-
-    /**
-     * Get the renderer
-     */
-    getRenderer() {
-        return this.renderer;
-    }
-
-    /**
-     * Get the camera
-     */
-    getCamera() {
-        return this.camera;
-    }
+    
+    getScene() { return this.scene; }
+    getRenderer() { return this.renderer; }
+    getCamera() { return this.camera; }
 }
