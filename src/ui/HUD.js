@@ -34,6 +34,7 @@ export class HUD {
     show() {
         if (this.elements.container) {
             this.elements.container.style.display = 'flex';
+            this.elements.container.classList.add('fade-in');
         }
     }
 

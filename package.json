@@ -10,6 +10,8 @@
     "test": "npx playwright test"
   },
   "dependencies": {
+    "postprocessing": "^6.39.0",
+    "simplex-noise": "^4.0.3",
     "three": "^0.183.0"
   },
   "devDependencies": {

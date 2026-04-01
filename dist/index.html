@@ -4,36 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>贪食蛇 3D 🐍</title>
-  <script type="module" crossorigin src="/assets/index-7GRyVwok.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-B1_1LQEQ.css">
+  <script type="module" crossorigin src="/assets/index-Dh_TxRYR.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BuIvhQ7n.css">
 </head>
 <body>
+    <!-- Aurora Animated Background -->
+    <div class="aurora-bg"></div>
+    
+    <!-- Grid Pattern Overlay -->
+    <div class="grid-pattern"></div>
+    
+    <!-- Particle Canvas for Menu -->
+    <canvas id="particleCanvas"></canvas>
+    
     <!-- Scanline Effect -->
     <div class="scanlines"></div>
     
-    <!-- HUD - Top Bar -->
-    <div id="hud" class="game-hud">
-        <div class="hud-item hud-left">
-            <span class="hud-icon">🎮</span>
-            <span id="modeDisplay" class="hud-text">经典</span>
-        </div>
-        <div class="hud-item hud-center">
+    <!-- HUD - Floating Glass Panel -->
+    <div id="hud" class="game-hud" style="display: none;">
+        <div class="hud-item score">
             <span class="hud-icon">⭐</span>
             <span id="scoreDisplay" class="hud-text">0</span>
         </div>
-        <div class="hud-item hud-right">
+        <div class="hud-item time">
             <span class="hud-icon">⏱️</span>
             <span id="timeDisplay" class="hud-text"></span>
+        </div>
+        <div class="hud-item mode">
+            <span class="hud-icon">🎮</span>
+            <span id="modeDisplay" class="hud-text">经典</span>
         </div>
     </div>
     
     <!-- Menu Overlay -->
     <div id="menuOverlay" class="overlay">
         <h1 class="game-title">
-            <span class="snake-emoji">🐍</span>
-            贪食蛇 3D
-            <span class="snake-emoji">🐍</span>
+            <span class="main-text">贪食蛇 3D</span>
             <span class="subtitle">SNAKE 3D</span>
+            <span class="snake-emoji">🐍</span>
         </h1>
         <div class="menu-buttons">
             <button class="menu-btn primary" onclick="window.game && window.game.startGame()">
@@ -108,5 +116,123 @@
     </div>
     
     <!-- Main Script -->
+    
+    <!-- Particle Animation Script -->
+    <script>
+        // Particle System for Menu Background
+        (function() {
+            const canvas = document.getElementById('particleCanvas');
+            const ctx = canvas.getContext('2d');
+            let particles = [];
+            let mouseX = 0;
+            let mouseY = 0;
+            let animationId;
+            
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            function createParticle() {
+                return {
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 3 + 1,
+                    speedX: (Math.random() - 0.5) * 0.5,
+                    speedY: (Math.random() - 0.5) * 0.5,
+                    opacity: Math.random() * 0.5 + 0.2,
+                    hue: Math.random() * 60 + 140, // Cyan to green range
+                    life: Math.random() * 200 + 100
+                };
+            }
+            
+            function initParticles() {
+                particles = [];
+                const count = Math.min(80, Math.floor(canvas.width * canvas.height / 15000));
+                for (let i = 0; i < count; i++) {
+                    particles.push(createParticle());
+                }
+            }
+            
+            function updateParticles() {
+                particles.forEach((p, i) => {
+                    p.x += p.speedX;
+                    p.y += p.speedY;
+                    p.life--;
+                    
+                    // Mouse interaction
+                    const dx = mouseX - p.x;
+                    const dy = mouseY - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 150) {
+                        p.x -= dx * 0.01;
+                        p.y -= dy * 0.01;
+                        p.opacity = Math.min(0.8, p.opacity + 0.02);
+                    }
+                    
+                    // Respawn if out of bounds or dead
+                    if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height || p.life <= 0) {
+                        particles[i] = createParticle();
+                    }
+                });
+            }
+            
+            function drawParticles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${p.hue}, 100%, 70%, ${p.opacity})`;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = `hsla(${p.hue}, 100%, 60%, ${p.opacity})`;
+                    ctx.fill();
+                    
+                    // Draw connections
+                    particles.forEach(p2 => {
+                        const dx = p2.x - p.x;
+                        const dy = p2.y - p.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < 100) {
+                            ctx.beginPath();
+                            ctx.moveTo(p.x, p.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.strokeStyle = `hsla(${p.hue}, 100%, 70%, ${0.1 * (1 - dist / 100)})`;
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                        }
+                    });
+                });
+            }
+            
+            function animate() {
+                updateParticles();
+                drawParticles();
+                animationId = requestAnimationFrame(animate);
+            }
+            
+            function handleMouseMove(e) {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            }
+            
+            // Init
+            resize();
+            initParticles();
+            animate();
+            
+            window.addEventListener('resize', () => {
+                resize();
+                initParticles();
+            });
+            
+            window.addEventListener('mousemove', handleMouseMove);
+            
+            // Cleanup on unload
+            window.addEventListener('beforeunload', () => {
+                cancelAnimationFrame(animationId);
+            });
+        })();
+    </script>
 </body>
 </html>
