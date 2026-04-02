@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake 3D — UI Prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0a0f;
+      --primary: #00ffaa;
+      --secondary: #8b5cf6;
+      --accent: #ff0080;
+      --gold: #ffd700;
+      --text: #ffffff;
+      --text-muted: #94a3b8;
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Orbitron', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ========== PARTICLE BACKGROUND ========== */
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: float 8s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
+      50% { transform: translateY(-100px) translateX(50px); opacity: 0.8; }
+    }
+
+    /* ========== MAIN MENU ========== */
+    .screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .screen.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Main Menu */
+    .main-menu {
+      background: radial-gradient(ellipse at center, rgba(0, 255, 170, 0.1) 0%, transparent 70%);
+    }
+
+    .game-title {
+      font-size: 4rem;
+      font-weight: 900;
+      letter-spacing: 0.2em;
+      margin-bottom: 0.5rem;
+      text-shadow: 
+        0 0 20px var(--primary),
+        0 0 40px var(--primary),
+        0 0 60px var(--primary);
+      animation: pulse-glow 2s infinite ease-in-out;
+    }
+
+    .game-title .emoji {
+      display: inline-block;
+      animation: bounce 1s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { text-shadow: 0 0 20px var(--primary), 0 0 40px var(--primary); }
+      50% { text-shadow: 0 0 40px var(--primary), 0 0 80px var(--primary), 0 0 120px var(--primary); }
+    }
+
+    .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      letter-spacing: 0.5em;
+      margin-bottom: 3rem;
+    }
+
+    /* Buttons */
+    .menu-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      width: 280px;
+    }
+
+    .btn {
+      position: relative;
+      padding: 1rem 2rem;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--text);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      cursor: pointer;
+      overflow: hidden;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn:hover {
+      transform: scale(1.05);
+      border-color: var(--primary);
+      box-shadow: 0 0 30px rgba(0, 255, 170, 0.3);
+    }
+
+    .btn:hover::before {
+      left: 100%;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border: none;
+      font-size: 1.3rem;
+      padding: 1.2rem 2rem;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 0 40px rgba(0, 255, 170, 0.5);
+    }
+
+    .hint-bar {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.8rem 1.5rem;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 50px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      backdrop-filter: blur(10px);
+    }
+
+    .hint-bar .key {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* ========== GAME HUD ========== */
+    .game-hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .hud-top {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      right: 1rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .hud-item {
+      padding: 0.6rem 1.2rem;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.1rem;
+      backdrop-filter: blur(5px);
+    }
+
+    .hud-bottom {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      right: 1rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .hud-rank {
+      color: var(--gold);
+    }
+
+    .hud-goal {
+      color: var(--secondary);
+    }
+
+    .coin-icon, .time-icon, .rank-icon, .goal-icon {
+      margin-right: 0.5rem;
+    }
+
+    /* ========== GAME OVER ========== */
+    .game-over {
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    .game-over-title {
+      font-size: 3rem;
+      font-weight: 900;
+      margin-bottom: 2rem;
+      color: var(--accent);
+      text-shadow: 0 0 30px var(--accent);
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+
+    .score-card {
+      background: var(--glass-bg);
+      border: 2px solid var(--primary);
+      border-radius: 16px;
+      padding: 2rem 3rem;
+      text-align: center;
+      margin-bottom: 2rem;
+      box-shadow: 0 0 50px rgba(0, 255, 170, 0.2);
+    }
+
+    .score-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      letter-spacing: 0.2em;
+      margin-bottom: 0.5rem;
+    }
+
+    .score-value {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 4rem;
+      font-weight: 900;
+      color: var(--primary);
+      text-shadow: 0 0 20px var(--primary);
+      animation: count-up 1s ease-out;
+    }
+
+    @keyframes count-up {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .high-score {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: var(--gold);
+    }
+
+    .high-score-badge {
+      margin-right: 0.5rem;
+    }
+
+    .percentile {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .btn-restart {
+      background: linear-gradient(135deg, var(--primary), #00cc88);
+    }
+
+    .btn-share {
+      background: linear-gradient(135deg, var(--secondary), var(--accent));
+      animation: rainbow-border 2s infinite;
+    }
+
+    @keyframes rainbow-border {
+      0%, 100% { box-shadow: 0 0 20px var(--secondary); }
+      50% { box-shadow: 0 0 30px var(--accent); }
+    }
+
+    .reward-bar {
+      padding: 0.8rem 1.5rem;
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 215, 0, 0.1));
+      border: 1px solid var(--gold);
+      border-radius: 50px;
+      font-size: 0.9rem;
+      color: var(--gold);
+      margin-top: 1rem;
+    }
+
+    /* ========== SKIN SHOP ========== */
+    .skin-shop {
+      background: var(--bg-dark);
+    }
+
+    .shop-header {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      right: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .shop-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .shop-coins {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.2rem;
+      color: var(--gold);
+    }
+
+    .skin-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      width: 90%;
+      max-width: 600px;
+      margin-top: 4rem;
+    }
+
+    .skin-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .skin-card:hover {
+      transform: translateY(-5px);
+      border-color: var(--primary);
+      box-shadow: 0 10px 30px rgba(0, 255, 170, 0.2);
+    }
+
+    .skin-card.owned {
+      border-color: var(--gold);
+    }
+
+    .skin-card.equipped {
+      border-color: var(--primary);
+      box-shadow: 0 0 20px rgba(0, 255, 170, 0.3);
+    }
+
+    .skin-preview {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .skin-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .skin-price {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--gold);
+    }
+
+    .skin-status {
+      font-size: 0.75rem;
+      color: var(--primary);
+      margin-top: 0.3rem;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 2rem;
+    }
+
+    .tab {
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab.active {
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .btn-back {
+      position: absolute;
+      bottom: 2rem;
+    }
+
+    /* ========== 3D GAME CANVAS (Placeholder) ========== */
+    .game-canvas-placeholder {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: 
+        radial-gradient(ellipse at 50% 50%, rgba(0, 255, 170, 0.05) 0%, transparent 50%),
+        linear-gradient(180deg, #0a0a0f 0%, #0f1a1a 100%);
+    }
+
+    .game-canvas-placeholder::before {
+      content: '3D 游戏场景';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      color: var(--text-muted);
+      opacity: 0.3;
+    }
+
+    /* Grid lines */
+    .game-canvas-placeholder::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(0, 255, 170, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 170, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      .game-title {
+        font-size: 2.5rem;
+      }
+      
+      .skin-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Particles Background -->
+  <div class="particles" id="particles"></div>
+
+  <!-- 3D Game Canvas Placeholder -->
+  <div class="game-canvas-placeholder"></div>
+
+  <!-- ========== MAIN MENU ========== -->
+  <div class="screen main-menu active" id="mainMenu">
+    <h1 class="game-title"><span class="emoji">🐍</span> SNAKE 3D</h1>
+    <p class="subtitle">VISUAL EDITION</p>
+    
+    <div class="menu-buttons">
+      <button class="btn btn-primary" onclick="showScreen('gameHud')">▶ 开始游戏</button>
+      <button class="btn" onclick="showScreen('skinShop')">🎨 皮肤商店</button>
+      <button class="btn" onclick="showScreen('leaderboard')">📊 排行榜</button>
+      <button class="btn">⚙️ 设置</button>
+    </div>
+
+    <div class="hint-bar">
+      🎮 操作：鼠标移动 | 加速：<span class="key">按住左键</span>
+    </div>
+  </div>
+
+  <!-- ========== GAME HUD ========== -->
+  <div class="screen" id="gameHud">
+    <div class="game-hud">
+      <div class="hud-top">
+        <div class="hud-item"><span class="coin-icon">💰</span><span id="coins">12,450</span></div>
+        <div class="hud-item"><span class="time-icon">⏱️</span><span id="time">01:23</span></div>
+      </div>
+      <div class="hud-bottom">
+        <div class="hud-item hud-rank"><span class="rank-icon">📍</span>段位：<span id="rank">黄金</span></div>
+        <div class="hud-item hud-goal"><span class="goal-icon">🎯</span>目标：<span id="goal">5,000</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== GAME OVER ========== -->
+  <div class="screen game-over" id="gameOver">
+    <h2 class="game-over-title">💀 游戏结束</h2>
+    
+    <div class="score-card">
+      <div class="score-label">本局得分</div>
+      <div class="score-value" id="finalScore">12,450</div>
+      <div class="high-score"><span class="high-score-badge">🏆</span>最高纪录: <span id="highScore">15,230</span></div>
+      <div class="percentile">📈 超过 82% 玩家</div>
+    </div>
+
+    <div class="action-buttons">
+      <button class="btn btn-restart" onclick="showScreen('mainMenu')">🔄 再来一局</button>
+      <button class="btn btn-share">📤 分享</button>
+    </div>
+
+    <button class="btn" onclick="showScreen('mainMenu')">🏠 返回主菜单</button>
+
+    <div class="reward-bar">
+      🎁 获得金币: +124 (可到皮肤商店升级)
+    </div>
+  </div>
+
+  <!-- ========== SKIN SHOP ========== -->
+  <div class="screen skin-shop" id="skinShop">
+    <div class="shop-header">
+      <h2 class="shop-title">🎨 皮肤商店</h2>
+      <div class="shop-coins">💰 12,450</div>
+    </div>
+
+    <div class="skin-grid">
+      <div class="skin-card equipped">
+        <div class="skin-preview">🐍</div>
+        <div class="skin-name">基础蛇</div>
+        <div class="skin-status">已装备</div>
+      </div>
+      <div class="skin-card owned">
+        <div class="skin-preview">🌈</div>
+        <div class="skin-name">虹彩蛇</div>
+        <div class="skin-price">300 💰</div>
+        <div class="skin-status">已拥有</div>
+      </div>
+      <div class="skin-card">
+        <div class="skin-preview">🔥</div>
+        <div class="skin-name">烈焰蛇</div>
+        <div class="skin-price">500 💰</div>
+      </div>
+      <div class="skin-card">
+        <div class="skin-preview">❄️</div>
+        <div class="skin-name">冰霜蛇</div>
+        <div class="skin-price">800 💰</div>
+      </div>
+      <div class="skin-card">
+        <div class="skin-preview">⚡</div>
+        <div class="skin-name">闪电蛇</div>
+        <div class="skin-price">1,200 💰</div>
+      </div>
+      <div class="skin-card">
+        <div class="skin-preview">🌙</div>
+        <div class="skin-name">月光蛇</div>
+        <div class="skin-price">1,500 💰</div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab active">全部</button>
+      <button class="tab">推荐</button>
+      <button class="tab">已拥有</button>
+    </div>
+
+    <button class="btn btn-back" onclick="showScreen('mainMenu')">← 返回</button>
+  </div>
+
+  <!-- ========== LEADERBOARD ========== -->
+  <div class="screen game-over" id="leaderboard">
+    <h2 class="game-over-title" style="color: var(--gold);">📊 本地排行榜</h2>
+    
+    <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1.5rem; width: 300px;">
+      <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--glass-border);">
+        <span style="color: var(--gold);">🥇</span>
+        <span style="font-family: 'Share Tech Mono', monospace;">15,230</span>
+        <span style="color: var(--text-muted);">你</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--glass-border);">
+        <span style="color: #c0c0c0;">🥈</span>
+        <span style="font-family: 'Share Tech Mono', monospace;">12,450</span>
+        <span style="color: var(--text-muted);">你</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--glass-border);">
+        <span style="color: #cd7f32;">🥉</span>
+        <span style="font-family: 'Share Tech Mono', monospace;">10,800</span>
+        <span style="color: var(--text-muted);">你</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; color: var(--text-muted);">
+        <span>4</span>
+        <span style="font-family: 'Share Tech Mono', monospace;">8,200</span>
+        <span>你</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; color: var(--text-muted);">
+        <span>5</span>
+        <span style="font-family: 'Share Tech Mono', monospace;">6,500</span>
+        <span>你</span>
+      </div>
+    </div>
+
+    <button class="btn btn-back" onclick="showScreen('mainMenu')" style="margin-top: 2rem;">← 返回主菜单</button>
+  </div>
+
+  <script>
+    // Create floating particles
+    function createParticles() {
+      const container = document.getElementById('particles');
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.top = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 8 + 's';
+        particle.style.animationDuration = (5 + Math.random() * 5) + 's';
+        container.appendChild(particle);
+      }
+    }
+
+    // Screen navigation
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
+    }
+
+    // Initialize
+    createParticles();
+
+    // Demo: simulate game over after 3 seconds on game hud
+    let demoMode = false;
+  </script>
+
+</body>
+</html>
