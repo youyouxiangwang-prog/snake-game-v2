@@ -368,10 +368,43 @@ export class Snake {
         }
     }
     
-    updateMeshes() {
+    /**
+     * Animation-only update - runs every frame, does NOT touch positions.
+     * Call this from Game.update().
+     */
+    updateVisuals(deltaTime) {
+        this.waveTime += deltaTime * 0.001;
+        
+        // Tongue flicker (pure animation, no position)
+        if (this.tongueMesh) {
+            const extend = (Math.sin(this.waveTime * 8) + 1) * 0.5 * 0.3;
+            this.tongueMesh.scale.z = 0.5 + extend;
+            this.tongueMesh.visible = Math.sin(this.waveTime * 6) > 0.2;
+        }
+    }
+    
+    /**
+     * Render with interpolation - runs every frame with alpha (0-1).
+     * Interpolates between prevPositions (last tick) and targetPositions (current tick).
+     * Call this from Game.render(alpha).
+     */
+    updateMeshesRender(alpha) {
+        const t = this.easeOutCubic(alpha);
+        
+        // Head with interpolation
         if (this.segments.length > 0) {
             const head = this.segments[0];
-            this.headMesh.position.copy(head.position);
+            let headX = head.position.x;
+            let headZ = head.position.z;
+            
+            if (this.prevPositions.length > 0) {
+                const prev = this.prevPositions[0];
+                headX = prev.x + (head.position.x - prev.x) * t;
+                headZ = prev.z + (head.position.z - prev.z) * t;
+            }
+            
+            const bob = Math.sin(this.waveTime * 4) * 0.03;
+            this.headMesh.position.set(headX, 0.4 + bob, headZ);
             this.headMesh.rotation.y = Math.atan2(this.direction.x, this.direction.z);
             this.headMesh.visible = true;
         }
@@ -379,33 +412,49 @@ export class Snake {
         // Wave animation params
         const waveAmp = 0.08;
         
-        // Update body instances
+        // Body segments with interpolation
         const bodyCount = Math.min(this.segments.length - 1, 99);
         
         for (let i = 0; i < bodyCount; i++) {
             const seg = this.segments[i + 1];
+            const prev = i < this.prevPositions.length ? this.prevPositions[i + 1] : null;
+            
+            // Interpolated position
+            let segX = seg.position.x;
+            let segZ = seg.position.z;
+            if (prev && t < 1) {
+                segX = prev.x + (seg.position.x - prev.x) * t;
+                segZ = prev.z + (seg.position.z - prev.z) * t;
+            }
+            
             const waveOffset = Math.sin((i + 1) * 0.6 + this.waveTime * 4) * waveAmp;
+            this.tempPosition.set(segX, 0.3 + waveOffset, segZ);
             
-            this.tempPosition.set(seg.position.x, 0.3 + waveOffset, seg.position.z);
-            
+            // Rotation towards next segment (also interpolated)
             let angle = 0;
             if (i < bodyCount - 1) {
                 const next = this.segments[i + 2];
-                angle = Math.atan2(
-                    next.position.x - seg.position.x,
-                    next.position.z - seg.position.z
-                );
+                const nextPrev = (i + 2) < this.prevPositions.length ? this.prevPositions[i + 2] : null;
+                let nextX = next.position.x, nextZ = next.position.z;
+                if (nextPrev && t < 1) {
+                    nextX = nextPrev.x + (next.position.x - nextPrev.x) * t;
+                    nextZ = nextPrev.z + (next.position.z - nextPrev.z) * t;
+                }
+                angle = Math.atan2(nextX - segX, nextZ - segZ);
             } else {
-                const prev = this.segments[i];
-                angle = Math.atan2(
-                    prev.position.x - seg.position.x,
-                    prev.position.z - seg.position.z
-                );
+                const prevSeg = this.segments[i];
+                const prevSegPrev = (i + 1) < this.prevPositions.length ? this.prevPositions[i + 1] : null;
+                let prevX = prevSeg.position.x, prevZ = prevSeg.position.z;
+                if (prevSegPrev && t < 1) {
+                    prevX = prevSegPrev.x + (prevSeg.position.x - prevSegPrev.x) * t;
+                    prevZ = prevSegPrev.z + (prevSeg.position.z - prevSegPrev.z) * t;
+                }
+                angle = Math.atan2(prevX - segX, prevZ - segZ);
             }
             
             // Scale body segments - smaller towards tail
-            const t = (i + 1) / this.segments.length;
-            const scale = THREE.MathUtils.lerp(0.9, 0.5, t);
+            const tSeg = (i + 1) / this.segments.length;
+            const scale = THREE.MathUtils.lerp(0.9, 0.5, tSeg);
             this.tempScale.set(scale, scale, scale);
             
             this.tempQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
@@ -416,15 +465,26 @@ export class Snake {
         this.bodyInstancedMesh.count = bodyCount;
         this.bodyInstancedMesh.instanceMatrix.needsUpdate = true;
         
-        // Update connectors
+        // Connectors
         const connCount = Math.min(this.segments.length - 2, 99);
         for (let i = 0; i < connCount; i++) {
             const segA = this.segments[i + 1];
             const segB = this.segments[i + 2];
             
-            const midX = (segA.position.x + segB.position.x) / 2;
-            const midZ = (segA.position.z + segB.position.z) / 2;
-            const midY = (segA.position.y + segB.position.y) / 2;
+            let midX = (segA.position.x + segB.position.x) / 2;
+            let midZ = (segA.position.z + segB.position.z) / 2;
+            const midY = 0.3;
+            
+            if (this.prevPositions.length > i + 2 && t < 1) {
+                const prevA = this.prevPositions[i + 1];
+                const prevB = this.prevPositions[i + 2];
+                const interpAX = prevA.x + (segA.position.x - prevA.x) * t;
+                const interpAZ = prevA.z + (segA.position.z - prevA.z) * t;
+                const interpBX = prevB.x + (segB.position.x - prevB.x) * t;
+                const interpBZ = prevB.z + (segB.position.z - prevB.z) * t;
+                midX = (interpAX + interpBX) / 2;
+                midZ = (interpAZ + interpBZ) / 2;
+            }
             
             const waveA = Math.sin((i + 1) * 0.6 + this.waveTime * 4) * waveAmp;
             const waveB = Math.sin((i + 2) * 0.6 + this.waveTime * 4) * waveAmp;
@@ -439,40 +499,29 @@ export class Snake {
         this.connectorMesh.count = connCount;
         this.connectorMesh.instanceMatrix.needsUpdate = true;
         
-        // Position tail
+        // Tail with interpolation
         if (this.segments.length >= 2) {
             const last = this.segments[this.segments.length - 1];
             const prev = this.segments[this.segments.length - 2];
             
-            this.tailMesh.position.set(last.position.x, 0.28, last.position.z);
-            this.tailMesh.rotation.y = Math.atan2(
-                prev.position.x - last.position.x,
-                prev.position.z - last.position.z
-            ) + Math.PI / 2;
+            let tailX = last.position.x, tailZ = last.position.z;
+            let prevTailX = prev.position.x, prevTailZ = prev.position.z;
+            
+            if (this.prevPositions.length >= this.segments.length && t < 1) {
+                const prevLast = this.prevPositions[this.segments.length - 1];
+                const prevPrev = this.prevPositions[this.segments.length - 2];
+                tailX = prevLast.x + (last.position.x - prevLast.x) * t;
+                tailZ = prevLast.z + (last.position.z - prevLast.z) * t;
+                prevTailX = prevPrev.x + (prev.position.x - prevPrev.x) * t;
+                prevTailZ = prevPrev.z + (prev.position.z - prevPrev.z) * t;
+            }
+            
+            this.tailMesh.position.set(tailX, 0.28, tailZ);
+            this.tailMesh.rotation.y = Math.atan2(prevTailX - tailX, prevTailZ - tailZ) + Math.PI / 2;
             this.tailMesh.visible = true;
         } else {
             this.tailMesh.visible = false;
         }
-    }
-    
-    updateVisuals(deltaTime) {
-        this.waveTime += deltaTime * 0.001;
-        this.interpolationProgress += deltaTime / this.config.moveInterval;
-        
-        // Tongue flicker
-        if (this.tongueMesh) {
-            const extend = (Math.sin(this.waveTime * 8) + 1) * 0.5 * 0.3;
-            this.tongueMesh.scale.z = 0.5 + extend;
-            this.tongueMesh.visible = Math.sin(this.waveTime * 6) > 0.2;
-        }
-        
-        // Head bob
-        if (this.headMesh) {
-            const bob = Math.sin(this.waveTime * 4) * 0.03;
-            this.headMesh.position.y = 0.4 + bob;
-        }
-        
-        this.updateMeshes();
     }
     
     easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }

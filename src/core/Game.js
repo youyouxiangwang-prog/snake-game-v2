@@ -42,9 +42,9 @@ export const COLLISION_CONFIG = {
 
 // Movement Configuration (SPEC Section 2.2)
 export const MOVEMENT_CONFIG = {
-    tickRate: 5, // Hz = 0.2s per move
+    tickRate: 15, // Hz
     moveDistance: 1,
-    moveInterval: 0.2, // seconds
+    moveInterval: 0.067, // seconds (15 Hz)
     segmentSpacing: 0.8,
     lerpFactor: 0.3,
     cameraLerp: 0.05
@@ -384,7 +384,8 @@ export class Game {
     }
 
     /**
-     * Variable update - runs every frame
+     * Variable update - runs every frame. 
+     * ONLY does animation (tongue, particles). Does NOT update positions.
      */
     update(deltaTime) {
         // Always update particles (even during pause for smooth effect)
@@ -394,7 +395,7 @@ export class Game {
         
         if (!this.stateMachine.is(GameState.PLAYING)) return;
         
-        // Update snake visuals
+        // Animation only - no position updates here
         this.snake.updateVisuals(deltaTime);
         
         // Update food animation
@@ -411,13 +412,14 @@ export class Game {
     }
 
     /**
-     * Render - runs every frame with interpolation alpha
+     * Render - runs every frame with interpolation alpha.
+     * Sets mesh positions using alpha for smooth interpolation between ticks.
      */
     render(alpha) {
-        // Update snake interpolation
-        this.snake.updateInterpolation(alpha);
+        // Render snake with interpolation (sets actual mesh positions)
+        this.snake.updateMeshesRender(alpha);
         
-        // Update food visual position
+        // Render food (uses its own animation)
         this.food.updateInterpolation(alpha);
         
         // Render scene

@@ -8,7 +8,7 @@
 
 export const GAME_LOOP_CONFIG = {
     // Fixed game tick rate (logic updates per second)
-    TICK_RATE: 5, // 5 Hz = moveInterval 0.2s as per SPEC
+    TICK_RATE: 15, // 15 Hz for smooth movement (66ms per tick)
     
     // Target FPS by platform
     TARGET_FPS: {
@@ -17,7 +17,7 @@ export const GAME_LOOP_CONFIG = {
     },
     
     // Maximum delta time to prevent spiral of death
-    MAX_DELTA_TIME: 0.1, // 100ms
+    MAX_DELTA_TIME: 0.067, // 67ms - matches one tick at 15Hz
     
     // Interpolation alpha for smooth rendering
     INTERPOLATION_ALPHA: 0.15
