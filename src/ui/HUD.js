@@ -92,14 +92,72 @@ export class HUD {
         if (!this.elements.score) return;
         
         // Remove and re-add class to restart animation
-        this.elements.score.classList.remove('pop');
+        this.elements.score.classList.remove('pulse');
         void this.elements.score.offsetWidth; // Force reflow
-        this.elements.score.classList.add('pop');
+        this.elements.score.classList.add('pulse');
         
         // Remove after animation
         setTimeout(() => {
-            this.elements.score.classList.remove('pop');
+            this.elements.score.classList.remove('pulse');
         }, 300);
+    }
+    
+    /**
+     * Show score fly animation at screen position
+     * Called when food is eaten
+     */
+    showScoreFly(screenX, screenY, points, isCombo = false) {
+        const el = document.createElement('div');
+        el.className = `score-flyup${isCombo ? ' combo' : ''}`;
+        el.textContent = `+${points}`;
+        el.style.left = `${screenX}px`;
+        el.style.top = `${screenY}px`;
+        document.body.appendChild(el);
+        
+        // Remove after animation
+        setTimeout(() => {
+            if (el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        }, 600);
+        
+        // Pulse the score
+        this.animateScorePop();
+    }
+    
+    /**
+     * Show food eaten burst effect at position
+     */
+    showFoodEatenEffect(screenX, screenY) {
+        const el = document.createElement('div');
+        el.className = 'food-eaten-effect';
+        el.style.left = `${screenX}px`;
+        el.style.top = `${screenY}px`;
+        document.body.appendChild(el);
+        
+        setTimeout(() => {
+            if (el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
+        }, 300);
+    }
+    
+    /**
+     * Enable minimal HUD mode (centered score only)
+     */
+    enableMinimalMode() {
+        if (this.elements.container) {
+            this.elements.container.classList.add('minimal');
+        }
+    }
+    
+    /**
+     * Disable minimal HUD mode
+     */
+    disableMinimalMode() {
+        if (this.elements.container) {
+            this.elements.container.classList.remove('minimal');
+        }
     }
 
     /**

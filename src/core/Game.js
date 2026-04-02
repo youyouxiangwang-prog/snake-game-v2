@@ -224,13 +224,77 @@ export class Game {
     gameOver() {
         this.stateMachine.transition(GameState.GAME_OVER);
         
+        // Trigger death effects
+        this.triggerDeathEffects();
+        
         // Check high score
         const isNewRecord = this.checkAndSaveHighScore();
         
-        // Update UI
-        this.menu.showGameOver(this.score, isNewRecord);
+        // Update UI after a short delay for effects
+        setTimeout(() => {
+            this.menu.showGameOver(this.score, isNewRecord);
+        }, 800);
         
         console.log(`[Game] Game Over - Score: ${this.score}`);
+    }
+    
+    /**
+     * Trigger death effects - screen shake, flash, snake explosion
+     */
+    triggerDeathEffects() {
+        // Screen shake
+        document.body.classList.add('screen-shake');
+        setTimeout(() => {
+            document.body.classList.remove('screen-shake');
+        }, 400);
+        
+        // Death flash
+        const flash = document.createElement('div');
+        flash.className = 'death-flash';
+        document.body.appendChild(flash);
+        setTimeout(() => {
+            if (flash.parentNode) flash.parentNode.removeChild(flash);
+        }, 500);
+        
+        // Snake fragment explosion
+        this.createSnakeExplosion();
+    }
+    
+    /**
+     * Create snake fragment explosion effect
+     */
+    createSnakeExplosion() {
+        const container = document.createElement('div');
+        container.className = 'snake-death-explosion';
+        document.body.appendChild(container);
+        
+        const snakePositions = this.snake.getBodyPositions();
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        
+        snakePositions.forEach((pos, i) => {
+            const fragment = document.createElement('div');
+            fragment.className = 'snake-fragment';
+            
+            // Random direction for explosion
+            const angle = (Math.PI * 2 * i) / snakePositions.length + Math.random() * 0.5;
+            const distance = 100 + Math.random() * 150;
+            const tx = Math.cos(angle) * distance;
+            const ty = Math.sin(angle) * distance;
+            
+            fragment.style.left = `${centerX + (Math.random() - 0.5) * 100}px`;
+            fragment.style.top = `${centerY + (Math.random() - 0.5) * 100}px`;
+            fragment.style.setProperty('--tx', `${tx}px`);
+            fragment.style.setProperty('--ty', `${ty}px`);
+            fragment.style.animationDelay = `${Math.random() * 0.1}s`;
+            
+            container.appendChild(fragment);
+        });
+        
+        // Clean up after animation
+        setTimeout(() => {
+            if (container.parentNode) container.parentNode.removeChild(container);
+        }, 1000);
     }
 
     /**
@@ -276,7 +340,10 @@ export class Game {
             }
         }
         
-        // Get input direction
+        // Update mouse-following direction
+        this.inputSystem.updateMouseDirection();
+        
+        // Get input direction (keyboard/mouse/touch)
         const direction = this.inputSystem.consumeDirection();
         if (direction) {
             this.snake.setDirection(direction);

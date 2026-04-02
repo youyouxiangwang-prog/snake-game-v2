@@ -2,8 +2,8 @@
  * InputSystem.js - Unified Input Handler
  * Based on SPEC.md Section 3.4 and 5.4
  * 
- * Handles keyboard (Arrow keys, WASD) and touch input.
- * Queues directions to prevent input loss.
+ * Handles keyboard (Arrow keys, WASD), mouse, and touch input.
+ * Mouse following control: snake follows mouse position (Slither.io style)
  */
 
 import { MOVEMENT_CONFIG } from '../core/Game.js';
@@ -12,10 +12,17 @@ import { MOVEMENT_CONFIG } from '../core/Game.js';
 const TOUCH_CONFIG = {
     swipe: {
         enabled: true,
-        threshold: 30,          // Minimum swipe distance in px
-        maxTime: 500,           // Maximum swipe time in ms
+        threshold: 30,
+        maxTime: 500,
         preventDefault: true
     }
+};
+
+// Mouse following configuration
+const MOUSE_CONFIG = {
+    enabled: true,
+    deadZone: 10,  // Minimum pixels to move before changing direction
+    smoothing: 0.3 // Direction change interpolation
 };
 
 export class InputSystem {
@@ -32,13 +39,101 @@ export class InputSystem {
         // Touch tracking
         this.touchStart = null;
         
+        // Mouse tracking for mouse-following control
+        this.mousePosition = { x: 0, y: 0 };
+        this.lastMouseDirection = null;
+        this.canvas = null;
+        
         // Setup input handlers
         this.setupKeyboard();
+        this.setupMouse();
         this.setupTouch();
         
-        console.log('[InputSystem] Initialized');
+        console.log('[InputSystem] Initialized with mouse-following support');
     }
 
+    /**
+     * Setup mouse input for mouse-following control
+     */
+    setupMouse() {
+        this.canvas = this.game?.sceneManager?.renderer?.domElement || document.querySelector('canvas');
+        
+        if (!this.canvas) {
+            console.warn('[InputSystem] Canvas not found for mouse input');
+            return;
+        }
+        
+        // Track mouse position
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (!MOUSE_CONFIG.enabled) return;
+            
+            const rect = this.canvas.getBoundingClientRect();
+            this.mousePosition = {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        });
+        
+        // Also track on document for better coverage
+        document.addEventListener('mousemove', (e) => {
+            if (!MOUSE_CONFIG.enabled) return;
+            
+            if (this.canvas) {
+                const rect = this.canvas.getBoundingClientRect();
+                this.mousePosition = {
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top
+                };
+            }
+        });
+        
+        console.log('[InputSystem] Mouse tracking enabled');
+    }
+    
+    /**
+     * Get mouse-based direction
+     * Called during fixedUpdate to update snake direction based on mouse position
+     */
+    updateMouseDirection() {
+        if (!MOUSE_CONFIG.enabled || !this.canvas) return;
+        
+        const canvas = this.canvas;
+        const rect = canvas.getBoundingClientRect();
+        
+        // Get snake head screen position (approximate - center of canvas)
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Calculate direction from center to mouse
+        const dx = this.mousePosition.x - centerX;
+        const dy = this.mousePosition.y - centerY;
+        
+        // Check dead zone
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < MOUSE_CONFIG.deadZone) return;
+        
+        // Determine primary direction based on angle
+        // 0° = right, 90° = down, 180°/-180° = left, -90° = up
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        
+        let newDirection;
+        if (angle >= -45 && angle < 45) {
+            newDirection = 'RIGHT';
+        } else if (angle >= 45 && angle < 135) {
+            newDirection = 'DOWN';
+        } else if (angle >= -135 && angle < -45) {
+            newDirection = 'UP';
+        } else {
+            newDirection = 'LEFT';
+        }
+        
+        // Only queue if different from last direction
+        if (newDirection !== this.lastMouseDirection) {
+            this.lastMouseDirection = newDirection;
+            this.queueDirection(newDirection);
+        }
+    }
+    
     /**
      * Setup keyboard input
      */
