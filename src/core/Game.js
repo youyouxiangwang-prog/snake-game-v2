@@ -341,8 +341,10 @@ export class Game {
             this.createScoreFlyup(foodPos, `+${SCORE_CONFIG.foodValue}`);
         }
         
-        // Camera shake
+        // Camera effects: shake + FOV boost
         this.sceneManager.triggerShake(0.25);
+        this.sceneManager.boostFov();
+        setTimeout(() => this.sceneManager.resetFov(), 150);
         
         // Score pop animation
         this.hud.animateScorePop();
@@ -388,9 +390,14 @@ export class Game {
      * ONLY does animation (tongue, particles). Does NOT update positions.
      */
     update(deltaTime) {
-        // Always update particles (even during pause for smooth effect)
+        // Always update particles
         if (this.particles) {
             this.particles.update(deltaTime);
+        }
+        
+        // Always update ambient effects
+        if (this.sceneManager) {
+            this.sceneManager.updateParticles(deltaTime);
         }
         
         if (!this.stateMachine.is(GameState.PLAYING)) return;
@@ -416,13 +423,16 @@ export class Game {
      * Sets mesh positions using alpha for smooth interpolation between ticks.
      */
     render(alpha) {
+        // Update snake trail particles
+        this.snake.updateTrailGeometry();
+        
         // Render snake with interpolation (sets actual mesh positions)
         this.snake.updateMeshesRender(alpha);
         
         // Render food (uses its own animation)
         this.food.updateInterpolation(alpha);
         
-        // Render scene
+        // Render scene with post-processing
         this.sceneManager.render();
     }
 

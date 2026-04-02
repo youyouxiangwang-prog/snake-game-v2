@@ -63,16 +63,45 @@ export class Food {
     createMesh() {
         const group = new THREE.Group();
         
-        // Apple body
-        const apple = new THREE.Mesh(this.appleGeometry, this.appleMaterial);
+        // Apple body - emissive glow material
+        const appleMat = new THREE.MeshPhysicalMaterial({
+            color: 0xff2266,
+            emissive: 0xff0044,
+            emissiveIntensity: 0.8,
+            metalness: 0.2,
+            roughness: 0.3,
+            clearcoat: 1.0,
+            clearcoatRoughness: 0.1
+        });
+        
+        const apple = new THREE.Mesh(this.appleGeometry, appleMat);
         apple.scale.set(1, 0.9, 1);
         apple.castShadow = true;
-        apple.receiveShadow = true;
         group.add(apple);
         
-        // Glow sphere
-        const glow = new THREE.Mesh(this.glowGeometry, this.glowMaterial);
-        group.add(glow);
+        // Multiple glow layers for bloom effect
+        const glowMat1 = new THREE.MeshBasicMaterial({
+            color: 0xff4488,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        const glowMat2 = new THREE.MeshBasicMaterial({
+            color: 0xff0066,
+            transparent: true,
+            opacity: 0.1,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        
+        const glow1 = new THREE.Mesh(new THREE.SphereGeometry(this.config.radius * 1.3, 12, 8), glowMat1);
+        group.add(glow1);
+        const glow2 = new THREE.Mesh(new THREE.SphereGeometry(this.config.radius * 1.8, 10, 6), glowMat2);
+        group.add(glow2);
         
         // Stem
         const stem = new THREE.Mesh(this.stemGeometry, this.stemMaterial);
@@ -87,9 +116,10 @@ export class Food {
         group.add(leaf);
         
         // Shine highlight
-        const highlightGeo = new THREE.SphereGeometry(0.1, 8, 8);
-        const highlightMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 });
-        const highlight = new THREE.Mesh(highlightGeo, highlightMat);
+        const highlight = new THREE.Mesh(
+            new THREE.SphereGeometry(0.1, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+        );
         highlight.position.set(-0.18, 0.18, -0.28);
         group.add(highlight);
         
